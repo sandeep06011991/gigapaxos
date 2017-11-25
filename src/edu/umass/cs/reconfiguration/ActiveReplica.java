@@ -196,8 +196,15 @@ public class ActiveReplica<NodeIDType> implements ReconfiguratorCallback,
 			return coordinator;
 		// reflectively instantiate
 		try {
-			return (AbstractReplicaCoordinator<?>) clazz.getConstructor(
+			AbstractReplicaCoordinator<?> ret= (AbstractReplicaCoordinator<?>) clazz.getConstructor(
 					AbstractReplicaCoordinator.class).newInstance(coordinator);
+			if(coordinator instanceof PaxosReplicaCoordinator){
+				ret.app=coordinator.app;
+				coordinator.app=ret;
+
+			}
+			return coordinator;
+//			return ret;
 		} catch (InstantiationException | IllegalAccessException
 				| IllegalArgumentException | InvocationTargetException
 				| NoSuchMethodException | SecurityException e) {

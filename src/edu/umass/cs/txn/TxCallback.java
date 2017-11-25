@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import edu.umass.cs.gigapaxos.interfaces.ExecutedCallback;
 import edu.umass.cs.gigapaxos.interfaces.Request;
+import edu.umass.cs.nio.interfaces.IntegerPacketType;
 import edu.umass.cs.reconfiguration.interfaces.GigaPaxosClient;
 import edu.umass.cs.txn.txpackets.AbortRequest;
 import edu.umass.cs.txn.txpackets.LockRequest;

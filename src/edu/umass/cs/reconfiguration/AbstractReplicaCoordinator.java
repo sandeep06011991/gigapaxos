@@ -23,11 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-import edu.umass.cs.txn.txpackets.TXInitRequest;
-import edu.umass.cs.txn.txpackets.TXPacket;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -82,7 +78,7 @@ import edu.umass.cs.reconfiguration.reconfigurationutils.TrivialRepliconfigurabl
 public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		Repliconfigurable, ReplicaCoordinator<NodeIDType>,
 		AppRequestParserBytes {
-	protected final Repliconfigurable app;
+	protected Repliconfigurable app;
 	private final ConcurrentHashMap<IntegerPacketType, Boolean> coordinationTypes = new ConcurrentHashMap<IntegerPacketType, Boolean>();
 
 	private ReconfiguratorCallback callback = null;
@@ -305,7 +301,7 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		return true;
 	}
 
-	public final Request getRequest(String stringified)
+	public  Request getRequest(String stringified)
 			throws RequestParseException {
 		if (JSONPacket.couldBeJSON(stringified)) {
 			boolean internal = false;
@@ -539,6 +535,4 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		}
 		return false;
 	}
-
-
 }

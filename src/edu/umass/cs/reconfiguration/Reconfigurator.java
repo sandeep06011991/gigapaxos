@@ -1677,7 +1677,7 @@ public class Reconfigurator<NodeIDType> implements
 						((Messenger<NodeIDType, ?>) this.messenger
 								.getClientMessenger())
 								.addPacketDemultiplexer(pd = new ReconfigurationPacketDemultiplexer(
-										this.getUnstringer(), this.DB).setThreadName(this.getMyID().toString()+"clientFacing"));
+										this.getUnstringer(), this.DB).setThreadName(this.getMyID().toString()+"-clientFacing"));
 				} else {
 					ReconfigurationConfig.log.log(Level.INFO,
 							"{0} adding self as demultiplexer to existing {1} client messenger",

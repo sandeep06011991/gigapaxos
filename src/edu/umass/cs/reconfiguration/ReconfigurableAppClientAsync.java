@@ -295,7 +295,7 @@ public abstract class ReconfigurableAppClientAsync<V> implements
                 Set<IntegerPacketType> allTypes = new HashSet<>();
                 allTypes.addAll(getRequestTypes());
                 allTypes.addAll(getMutualAuthTypes());
-                 
+
 		// set up transport
 		(this.niot = (new MessageNIOTransport<String, Object>(null, null,
 				(new ClientPacketDemultiplexer(getRequestTypes())), true,

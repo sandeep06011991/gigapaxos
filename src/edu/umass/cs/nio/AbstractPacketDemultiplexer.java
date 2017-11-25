@@ -184,7 +184,7 @@ public abstract class AbstractPacketDemultiplexer<MessageType> implements
 		if (type == null || !this.demuxMap.containsKey(type)) {
 			/* It is natural for some demultiplexers to not handle some packet
 			 * types, so it is not a "bad" thing that requires a warning log. */
-			log.log(Level.INFO,
+			log.log(level,
 					"{0} ignoring unknown packet type: {1}: {2}",
 					new Object[] {
 							this,

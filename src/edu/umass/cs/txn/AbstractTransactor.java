@@ -35,6 +35,7 @@ public abstract class AbstractTransactor<NodeIDType> extends
 			AbstractReplicaCoordinator<NodeIDType> coordinator) {
 		super(coordinator);
 		this.coordinator = coordinator;
+
 	}
 
 	private static final IntegerPacketType[] txTypes = {
@@ -68,7 +69,8 @@ public abstract class AbstractTransactor<NodeIDType> extends
 		types.addAll(this.coordinator.getRequestTypes());
 		// tx types
 		if (ENABLE_TRANSACTIONS)
-			types.addAll(new HashSet<IntegerPacketType>(Arrays.asList(txTypes)));
+			types.addAll(TXPacket.PacketType.intToType.values());
+//			types.addAll(new HashSet<IntegerPacketType>(Arrays.asList(txTypes)));
 		return cachedRequestTypes = types;
 	}
 
@@ -175,7 +177,8 @@ public abstract class AbstractTransactor<NodeIDType> extends
 	public boolean restore(String name, String state) {
 		TXInterface request = this.decodeTX(state);
 		if (request == null)
-			return this.coordinator.restore(name, state);
+			return super.restore(name,state);
+//			return this.coordinator.restore(name, state);
 		else
 			return this.processTX((TXInterface) request);
 	}
@@ -204,4 +207,7 @@ public abstract class AbstractTransactor<NodeIDType> extends
 
 	/* ********* End of Repliconfigurable methods *************** */
 
+	public AbstractReplicaCoordinator<NodeIDType> getCoordinator() {
+		return coordinator;
+	}
 }

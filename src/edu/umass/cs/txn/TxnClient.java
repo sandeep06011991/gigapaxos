@@ -5,6 +5,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Set;
 import edu.umass.cs.reconfiguration.examples.AppRequest;
+import edu.umass.cs.reconfiguration.examples.NoopAppClient;
 import edu.umass.cs.txn.interfaces.TxOp;
 import edu.umass.cs.txn.txpackets.TXInitRequest;
 import edu.umass.cs.txn.txpackets.TxOpRequest;
@@ -61,8 +62,6 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> implements 
                         Transaction transaction = new Transaction(new InetSocketAddress(100), txOps);
                         TXInitRequest txInitRequest = new TXInitRequest(transaction);
                         //Convert everything to JSON
-
-
                         sendRequest(txInitRequest,new InetSocketAddress("127.0.0.1",2100), new RequestCallback() {
                             @Override
                             public void handleResponse(Request response) {
@@ -70,6 +69,28 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> implements 
                             }
 
                         });
+
+//                        sendRequest(ReplicableClientRequest.wrap(new AppRequest(name,
+//                                "request_value" + i,
+//                                AppRequest.PacketType.DEFAULT_APP_REQUEST,
+//                                false)), new RequestCallback() {
+//
+//                            @Override
+//                            public void handleResponse(Request response) {
+//                                if (response instanceof ActiveReplicaError)
+//                                {   System.out.print(response.getSummary());
+//                                    System.out.println("Some error");
+//                                    return;
+//                                }
+//                                // else
+//                                System.out.println("Received response: "
+//                                        + response
+//                                        + "  ["
+//                                        + (System.currentTimeMillis() - reqInitime)
+//                                        + "ms]");
+//
+//                            }
+//                        });
                     }catch (IOException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();

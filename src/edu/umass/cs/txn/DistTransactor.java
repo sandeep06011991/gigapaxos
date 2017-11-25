@@ -9,13 +9,11 @@ import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import edu.umass.cs.gigapaxos.interfaces.Application;
-import edu.umass.cs.gigapaxos.interfaces.ExecutedCallback;
-import edu.umass.cs.gigapaxos.interfaces.Replicable;
-import edu.umass.cs.gigapaxos.interfaces.Request;
+import edu.umass.cs.gigapaxos.interfaces.*;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
 import edu.umass.cs.nio.nioutils.NIOHeader;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
+import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
 import edu.umass.cs.reconfiguration.interfaces.GigaPaxosClient;
@@ -47,7 +45,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 	 * A distributed transaction processor needs a client to submit transaction
 	 * operations as well as to acquire and release locks.
 	 */
-	private final GigaPaxosClient<Request> gpClient;
+	final public  ReconfigurableAppClientAsync<Request> gpClient;
 	
 	private final TXLocker txLocker;
 
@@ -60,6 +58,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 		super(coordinator);
 		this.gpClient = TXUtils.getGPClient(coordinator);
 		this.txLocker = new TXLockerMap();
+//		this.setCallback(new TxCallback(this.gpClient));
 	}
 
 
@@ -81,6 +80,10 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 		if(request.getRequestType()==TXPacket.PacketType.LOCK_REQUEST){
 			throw new RuntimeException("Successfully reached over here");
 
+		}
+
+		if(request.getRequestType()==TXPacket.PacketType.LOCK_OK){
+			throw new RuntimeException("Lock ok");
 		}
 
 
@@ -190,7 +193,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 	 * @param tx
 	 * @throws TXException
 	 */
-	public void transact(Transaction tx) throws TXException {
+	public void transact(Transaction tx) throws TXException,ReconfigurableAppClientAsync.ReconfigurationException {
 		boolean locked = false, executed = false, committed = false;
 		try {
 			if (this.createTxGroup(tx) && (locked = getLocks(tx))
@@ -308,7 +311,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 	 *         false otherwise.
 	 * @throws IOException
 	 */
-	private boolean createTxGroup(Transaction tx) throws IOException {
+	private boolean createTxGroup(Transaction tx) throws IOException,ReconfigurableAppClientAsync.ReconfigurationException {
 		if (FIXED_TX_GROUP && this.fixedTXGroupCreated)
 			return true;
 		// else
@@ -327,7 +330,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 	/* The default policy is to use a deterministic set of active replicas for
 	 * each transaction of size MAX_TX_GROUP_SIZE of the total number of active
 	 * replica, whichever is lower. */
-	protected Set<InetSocketAddress> getTxGroup(String txid) throws IOException {
+	protected Set<InetSocketAddress> getTxGroup(String txid) throws IOException,ReconfigurableAppClientAsync.ReconfigurationException {
 		InetSocketAddress[] addresses = this.getAllActiveReplicas().toArray(
 				new InetSocketAddress[0]);
 		Set<InetSocketAddress> group = new HashSet<InetSocketAddress>();
@@ -352,7 +355,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 	 * @return The set of active replica socket addresses.
 	 * @throws IOException
 	 */
-	private Set<InetSocketAddress> getAllActiveReplicas() throws IOException {
+	private Set<InetSocketAddress> getAllActiveReplicas() throws IOException,ReconfigurableAppClientAsync.ReconfigurationException {
 		return ((RequestActiveReplicas) this.gpClient
 				.sendRequest(new RequestActiveReplicas(Config
 						.getGlobalString(RC.BROADCAST_NAME)))).getActives();
@@ -366,9 +369,35 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 		throw new RuntimeException("Unimplemented");
 	}
 
+
+	public Request getRequest(String str) throws RequestParseException{
+		//Code similar to the one below, clean this mess
+		try{
+			JSONObject jsonObject=new  JSONObject(str);
+			TXPacket.PacketType packetId=TXPacket.PacketType.intToType.get(jsonObject.getInt("type"));
+			if(packetId==TXPacket.PacketType.TX_INIT){
+				TXInitRequest txInitRequest= new TXInitRequest(jsonObject);
+//				txInitRequest.transaction.setEntryServer(header.sndr);
+				return txInitRequest;
+			}
+			if(packetId==TXPacket.PacketType.LOCK_REQUEST){
+				LockRequest lockRequest=new LockRequest(jsonObject);
+				return lockRequest;
+			}
+
+
+		}catch(Exception e){
+			e.printStackTrace();
+			//silent kill
+		}
+		return this.app.getRequest(str);
+//
+	}
 	@Override
 	public  Request getRequest(byte[] bytes, NIOHeader header)
 			throws RequestParseException{
+
+		//Code similar to the one above, clean this mess
 		try{
 			String str=new String(bytes, NIOHeader.CHARSET);
 			JSONObject jsonObject=new  JSONObject(str);
@@ -382,13 +411,19 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 				LockRequest lockRequest=new LockRequest(jsonObject);
 				return lockRequest;
 			}
+			if(packetId==TXPacket.PacketType.LOCK_OK){
+				LockRequest lockRequest=new LockRequest(jsonObject);
+				System.out.print("Received lock ok request");
+				return lockRequest;
+			}
 
 
 		}catch(Exception e){
 			e.printStackTrace();
 			//silent kill
 		}
-		return super.getRequest(bytes,header);
+		return this.app.getRequest(bytes,header);
+//		return this.getApp()).getRequest(bytes,header);
 	}
 
 	public Set<IntegerPacketType> getAppRequestTypes(){
@@ -397,7 +432,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 
 	@Override
 	public boolean execute(Request request) {
-		throw new RuntimeException("succeful intercept");
+		return execute(request,false);
 //		if(request instanceof LockRequest){
 //			System.out.print("Lock successfull");
 //			return true;
@@ -405,11 +440,43 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 //		return super.execute(request);
 	}
 
+
 	@Override
 	public boolean execute(Request request, boolean doNotReplyToClient){
-		throw new RuntimeException("succefully intercepted haha");
+
+		if(request instanceof TXInitRequest){
+			TXInitRequest trx=(TXInitRequest)request;
+			TreeSet<String> tt=trx.transaction.getLockList();
+			for(String t:tt){
+//				trx.transaction.setEntryServer(this.getMessenger().getListeningSocketAddress());
+				Request lockRequest=new LockRequest(t,trx.transaction);
+				try {
+					System.out.println("Begin locking");
+
+					RequestFuture r=this.gpClient.sendRequest(lockRequest, new RequestCallback() {
+						@Override
+						public void handleResponse(Request response) {
+							System.out.println(response.getRequestType().toString());
+							System.out.println("Lock successfull");
+						}
+					});
+					r.get();
+					return true;
+				}catch(Exception ex){
+					ex.printStackTrace();
+				}
+			}
+		}
+		if(request instanceof LockRequest){
+			LockRequest response=new LockRequest(((LockRequest) request).getLockID(),((LockRequest) request).getTXID());
+			((LockRequest) request).response=response;
+			return true;
+		}
+		return this.app.execute(request);
 
 	}
+
+
 }
 
 

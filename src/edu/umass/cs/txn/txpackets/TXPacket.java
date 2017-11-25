@@ -54,7 +54,9 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 		TX_OP_REQUEST (256),
 
 
-		TX_INIT(257)
+		TX_INIT(257),
+
+		LOCK_OK(258)
 		;
 
 		private final int number;
@@ -73,7 +75,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 		public static final IntegerPacketTypeMap<PacketType> intToType = new IntegerPacketTypeMap<PacketType>(
 				PacketType.values());
 	}
-
+	public TXPacket response;
 	/* The tuple <txid, initiator> is used to detect conflicting txids chosen by
 	 * different initiating nodes. */
 	protected final String txid;
@@ -125,7 +127,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	@Override
 	public ClientRequest getResponse() {
 		// TODO Auto-generated method stub
-		return null;
+		return response;
 	}
 
 	@Override
@@ -181,5 +183,9 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 		JSONObject jsonObject=super.toJSONObject();
 		jsonObject.put(Keys.TXID.toString(),txid);
 		return jsonObject;
+	}
+
+	public PacketType getTXPacketType(){
+		return (PacketType)getRequestType();
 	}
 }

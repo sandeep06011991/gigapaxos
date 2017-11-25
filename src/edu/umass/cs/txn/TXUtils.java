@@ -155,7 +155,7 @@ public class TXUtils implements Transactor {
 	 * @return The created client.
 	 * @throws IOException
 	 */
-	protected static GigaPaxosClient<Request> getGPClient(AppRequestParser app)
+	protected static ReconfigurableAppClientAsync<Request> getGPClient(AppRequestParser app)
 			throws IOException {
 		return new ReconfigurableAppClientAsync<Request>(
 				ReconfigurationConfig.getReconfiguratorAddresses(), false) {
@@ -174,7 +174,11 @@ public class TXUtils implements Transactor {
 
 			@Override
 			public Set<IntegerPacketType> getRequestTypes() {
-				return app.getRequestTypes();
+				Set<IntegerPacketType> set;
+				set=app.getRequestTypes();
+				set.addAll(TXPacket.PacketType.intToType.values());
+				return set;
+//				return app.getRequestTypes().addAll(TXPacket.PacketType.intToType.values());
 			}
 			
 			public String getLabel() {
