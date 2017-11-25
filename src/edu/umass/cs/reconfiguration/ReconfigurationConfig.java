@@ -392,7 +392,7 @@ public class ReconfigurationConfig {
 		/**
 		 * If true, transactions are enabled; else disabled.
 		 */
-		ENABLE_TRANSACTIONS (false),
+		ENABLE_TRANSACTIONS (true),
 		
 		/**
 		 * The name of the class used to wrap the application's default

@@ -52,6 +52,9 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 		 * 
 		 */
 		TX_OP_REQUEST (256),
+
+
+		TX_INIT(257)
 		;
 
 		private final int number;
@@ -76,7 +79,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	protected final String txid;
 	private boolean failed;
 	private ResponseCode code = null;
-
+	private IntegerPacketType packetType;
 	private static enum Keys {
 		TXID, LOCKID, INITIATOR
 	}
@@ -98,26 +101,19 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	public TXPacket(JSONObject json) throws JSONException {
 		super(json);
 		this.txid = json.getString(Keys.TXID.toString());
+
 	}
 
 	@Override
 	public IntegerPacketType getRequestType() {
-		// TODO Auto-generated method stub
-		return null;
+		return PacketType.intToType.get(type);
 	}
 
-	/**
-	 * @return {@link TXPacket.PacketType}
-	 */
-	public TXPacket.PacketType getTXPacketType() {
-		// TODO Auto-generated method stub
-		return null;
-	}
 
 	@Override
 	public String getServiceName() {
 		// TODO Auto-generated method stub
-		return null;
+		return "Service_name_txn";
 	}
 
 	@Override
@@ -141,7 +137,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	@Override
 	protected JSONObject toJSONObjectImpl() throws JSONException {
 		// TODO Auto-generated method stub
-		return null;
+		return new JSONObject();
 	}
 
 	/**
@@ -178,5 +174,12 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	 */
 	public String getTXID() {
 		return this.txid;
+	}
+
+	@Override
+	public JSONObject toJSONObject() throws JSONException {
+		JSONObject jsonObject=super.toJSONObject();
+		jsonObject.put(Keys.TXID.toString(),txid);
+		return jsonObject;
 	}
 }

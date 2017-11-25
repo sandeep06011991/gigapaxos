@@ -42,7 +42,8 @@ public abstract class AbstractTransactor<NodeIDType> extends
 			TXPacket.PacketType.COMMIT_REQUEST,
 			TXPacket.PacketType.LOCK_REQUEST,
 			TXPacket.PacketType.TX_STATE_REQUEST,
-			TXPacket.PacketType.UNLOCK_REQUEST };
+			TXPacket.PacketType.UNLOCK_REQUEST,
+			TXPacket.PacketType.TX_INIT};
 
 	private static final boolean ENABLE_TRANSACTIONS = Config
 			.getGlobalBoolean(RC.ENABLE_TRANSACTIONS);

@@ -34,11 +34,11 @@ public class LockRequest extends TXPacket {
 		super(json);
 		this.lockID = json.getString(Keys.LOCKID.toString());
 	}
-
-	public JSONObject toJSONObjectImpl() {
-		throw new RuntimeException("Unimplemented");
+	public JSONObject toJSONObject() throws JSONException{
+		JSONObject jsonObject=super.toJSONObject();
+		jsonObject.put(Keys.LOCKID.toString(),lockID);
+		return jsonObject;
 	}
-
 	/**
 	 * @return Service name that also acts as a lock ID.
 	 */
@@ -48,5 +48,10 @@ public class LockRequest extends TXPacket {
 
 	public String getServiceName() {
 		return this.getLockID();
+	}
+
+	@Override
+	public boolean needsCoordination() {
+		return true;
 	}
 }

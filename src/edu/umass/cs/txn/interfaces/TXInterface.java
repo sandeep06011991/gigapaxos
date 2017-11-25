@@ -1,6 +1,8 @@
 package edu.umass.cs.txn.interfaces;
 
 
+import edu.umass.cs.gigapaxos.interfaces.Request;
+
 /**
  * @author arun
  * 

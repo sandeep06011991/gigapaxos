@@ -9,4 +9,5 @@ build.number
 /nbbuild.xml
 /jars/
 .idea/*
+tmp/
 *.iml

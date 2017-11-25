@@ -5,13 +5,20 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.TreeSet;
 
+import edu.umass.cs.gigapaxos.interfaces.AppRequestParser;
 import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
+import edu.umass.cs.nio.interfaces.IntegerPacketType;
+import edu.umass.cs.reconfiguration.examples.AppRequest;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.ClientReconfigurationPacket;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.DeleteServiceName;
 import edu.umass.cs.txn.interfaces.TXInterface;
 import edu.umass.cs.txn.interfaces.TXRequest;
 import edu.umass.cs.txn.interfaces.TxOp;
+import edu.umass.cs.txn.txpackets.TxOpRequest;
 import edu.umass.cs.utils.GCConcurrentHashMap;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * @author arun
@@ -35,34 +42,21 @@ public class Transaction implements TXInterface {
 		TXOPS, TXID, DELETES,
 	}
 
-	private final TXRequest tx;
-	
 	// a transaction number chosen to be unique at each client
 	private final long txn;
 
 	// the server issuing the transaction
 	private InetSocketAddress entryServer;
-	
+
+	ArrayList<TxOp> txOps;
 	/**
 	 * @param entryServer
-	 * @param tx
 	 */
-	public Transaction(InetSocketAddress entryServer, TXInterface tx) {
-		this.tx = tx;
+	public Transaction(InetSocketAddress entryServer ,ArrayList<TxOp> txOps) {
 		this.txn = getNewTxid(entryServer);
 		this.entryServer = entryServer;
+		this.txOps=txOps;
 	}
-	
-	/**
-	 * @param entryServer
-	 * @param tx
-	 */
-	public Transaction(InetSocketAddress entryServer, TXRequest tx) {
-		this.txn = getNewTxid(entryServer);
-		this.entryServer = entryServer;
-		this.tx = tx;
-	}
-	
 
 	/**
 	 * @return The set of lock identifiers needed for this transaction in
@@ -71,7 +65,11 @@ public class Transaction implements TXInterface {
 	 *         deletion requests are excluded from this list.
 	 */
 	public TreeSet<String> getLockList() {
-		throw new RuntimeException("Unimplemented");
+		TreeSet<String> set=new TreeSet<>();
+		for(TxOp txOp:txOps){
+			set.add(txOp.getServiceName());
+		}
+		return set;
 	}
 
 	/**
@@ -91,6 +89,7 @@ public class Transaction implements TXInterface {
 	 *         transaction number.
 	 */
 	public String getTXID() {
+
 		return this.entryServer.getAddress().getHostAddress() + ":"
 				+ this.entryServer.getPort() + ":" + this.txn;
 	}
@@ -143,4 +142,30 @@ public class Transaction implements TXInterface {
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	public JSONObject toJSONObject() throws JSONException{
+		JSONObject jsonObject=new JSONObject();
+		jsonObject.put("txId",txn);
+		ArrayList<JSONObject> j=new ArrayList<>();
+		for(TxOp txOp:txOps){
+			j.add(txOp.toJSONObject());
+		}
+		jsonObject.put("txOps",j);
+		return jsonObject;
+	}
+
+	public Transaction(JSONObject jsonObject) throws JSONException{
+		txn=jsonObject.getInt("txId");
+		JSONArray j_txops=jsonObject.getJSONArray("txOps");
+		txOps=new ArrayList<>();
+		for(int i=0;i<j_txops.length();i++){
+			txOps.add(new TxOpRequest((JSONObject) j_txops.get(i)));
+		}
+
+	}
+
+	public void setEntryServer(InetSocketAddress inetSocketAddress){
+		this.entryServer=inetSocketAddress;
+	}
+
 }

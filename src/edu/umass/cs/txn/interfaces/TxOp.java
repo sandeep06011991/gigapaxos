@@ -3,6 +3,8 @@ package edu.umass.cs.txn.interfaces;
 import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.ClientReconfigurationPacket;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * @author arun
@@ -36,4 +38,8 @@ public interface TxOp extends Request {
 	default boolean isIdempotent() {
 		return false;
 	}
+
+
+	public JSONObject toJSONObject() throws JSONException;
+
 }

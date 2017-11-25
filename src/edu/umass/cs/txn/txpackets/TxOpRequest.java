@@ -1,5 +1,7 @@
 package edu.umass.cs.txn.txpackets;
 
+import edu.umass.cs.reconfiguration.examples.AppRequest;
+import edu.umass.cs.reconfiguration.examples.noopsimple.NoopApp;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -60,5 +62,29 @@ public class TxOpRequest extends TXPacket implements TxOp {
 	public boolean isBlocking() {
 		// TODO Auto-generated method stub
 		return false;
+	}
+
+
+	@Override
+	public JSONObject toJSONObject() throws JSONException {
+		JSONObject jsonObject=super.toJSONObject();
+		if(request instanceof AppRequest){
+			jsonObject.put(Keys.REQUEST.toString(),((AppRequest) request).toJSONObjectImpl());
+		}
+		return jsonObject;
+	}
+
+	public TxOpRequest(JSONObject jsonObject)throws JSONException{
+		super(jsonObject);
+		String req=jsonObject.getString(Keys.REQUEST.toString());
+		try {
+			request=NoopApp.staticGetRequest(req);
+		}catch(Exception ex){
+			throw new JSONException("Request could not be parsed");
+		}
+		}
+
+	public String getServiceName(){
+		return this.request.getServiceName();
 	}
 }

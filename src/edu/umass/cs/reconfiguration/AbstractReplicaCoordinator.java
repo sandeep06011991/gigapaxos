@@ -23,7 +23,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import edu.umass.cs.txn.txpackets.TXInitRequest;
+import edu.umass.cs.txn.txpackets.TXPacket;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -323,7 +327,7 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		return this.app.getRequest(stringified);
 	}
 
-	public final Request getRequest(byte[] bytes, NIOHeader header)
+	public Request getRequest(byte[] bytes, NIOHeader header)
 			throws RequestParseException {
 		try {
 			return ByteBuffer.wrap(bytes).getInt() == ReconfigurationPacket.PacketType.REPLICABLE_CLIENT_REQUEST
@@ -535,4 +539,6 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		}
 		return false;
 	}
+
+
 }

@@ -1708,6 +1708,7 @@ public class PaxosInstanceStateMachine implements Keyable<String>, Pausable {
 						return true;
 				} catch (Exception | Error e) {
 					// must swallow any and all exceptions
+					System.out.println(e.getMessage());
 					e.printStackTrace();
 				}
 				if (!executed) {

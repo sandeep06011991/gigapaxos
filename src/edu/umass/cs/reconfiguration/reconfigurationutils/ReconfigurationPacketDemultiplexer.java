@@ -19,6 +19,9 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.logging.Level;
 
+import edu.umass.cs.reconfiguration.ReconfigurationConfig;
+import edu.umass.cs.txn.txpackets.TXInitRequest;
+import edu.umass.cs.txn.txpackets.TXPacket;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -96,12 +99,13 @@ public class ReconfigurationPacketDemultiplexer extends
 	protected Request processHeader(byte[] message, NIOHeader header) {
 		assert (message != null);
 		ByteBuffer bbuf = ByteBuffer.wrap(message);
+		int packetId=bbuf.getInt();
 		ReconfigurationPacket.PacketType rcType = null;
 		JSONObject json = null;
 		// try to get reconfiguration packet JSON first
 		if ((BYTEIFICATION
 				&& (rcType = ReconfigurationPacket.PacketType.intToType
-						.get(bbuf.getInt())) != null
+						.get(packetId)) != null
 				&& rcType != ReconfigurationPacket.PacketType.REPLICABLE_CLIENT_REQUEST && (json = AbstractJSONPacketDemultiplexer
 				.processHeaderStatic(message, Integer.BYTES, header, true)) != null)
 
@@ -113,6 +117,9 @@ public class ReconfigurationPacketDemultiplexer extends
 					.getReconfigurationPacketSuppressExceptions(json,
 							this.unstringer);
 		}
+		//This is a temporary fix. Come up with cleaner solution
+
+
 		// else must be app packet
 		if (this.appRequestparser != null) {
 			try {

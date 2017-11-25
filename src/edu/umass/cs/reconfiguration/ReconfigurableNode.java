@@ -134,6 +134,7 @@ public abstract class ReconfigurableNode<NodeIDType> {
 								+ ClientRequest.class.getSimpleName()
 								+ " or not expect to send "
 								+ " responses back to clients or rely on alternate means for messaging.");
+
 			appCoordinator = this.getAppCoordinator(
 					app, myID, nodeConfig, messenger);
 

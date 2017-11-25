@@ -5,24 +5,32 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import edu.umass.cs.gigapaxos.interfaces.Application;
+import edu.umass.cs.gigapaxos.interfaces.ExecutedCallback;
+import edu.umass.cs.gigapaxos.interfaces.Replicable;
 import edu.umass.cs.gigapaxos.interfaces.Request;
+import edu.umass.cs.nio.interfaces.IntegerPacketType;
+import edu.umass.cs.nio.nioutils.NIOHeader;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
+import edu.umass.cs.reconfiguration.ReconfigurationConfig;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
 import edu.umass.cs.reconfiguration.interfaces.GigaPaxosClient;
+import edu.umass.cs.reconfiguration.reconfigurationpackets.BasicReconfigurationPacket;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.ClientReconfigurationPacket;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.CreateServiceName;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.RequestActiveReplicas;
+import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
 import edu.umass.cs.txn.exceptions.ResponseCode;
 import edu.umass.cs.txn.exceptions.TXException;
 import edu.umass.cs.txn.interfaces.TXLocker;
 import edu.umass.cs.txn.interfaces.TxOp;
-import edu.umass.cs.txn.txpackets.AbortRequest;
-import edu.umass.cs.txn.txpackets.CommitRequest;
-import edu.umass.cs.txn.txpackets.LockRequest;
-import edu.umass.cs.txn.txpackets.UnlockRequest;
+import edu.umass.cs.txn.txpackets.*;
 import edu.umass.cs.utils.Config;
+import org.json.JSONObject;
 
 /**
  * @author arun
@@ -33,7 +41,7 @@ import edu.umass.cs.utils.Config;
  *         purpose.
  * @param <NodeIDType>
  */
-public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> implements TXLocker {
+public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> implements TXLocker,Replicable {
 
 	/**
 	 * A distributed transaction processor needs a client to submit transaction
@@ -52,6 +60,31 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 		super(coordinator);
 		this.gpClient = TXUtils.getGPClient(coordinator);
 		this.txLocker = new TXLockerMap();
+	}
+
+
+	protected boolean handleIncoming(Request request, ExecutedCallback callback) {
+		if(request.getRequestType()==TXPacket.PacketType.TX_INIT){
+			TXInitRequest trx=(TXInitRequest)request;
+			TreeSet<String> tt=trx.transaction.getLockList();
+			for(String t:tt){
+				trx.transaction.setEntryServer(this.getMessenger().getListeningSocketAddress());
+				Request lockRequest=new LockRequest(t,trx.transaction);
+				try {
+					this.gpClient.sendRequest(lockRequest);
+				}catch(Exception ex){
+					ex.printStackTrace();
+				}
+			}
+			throw new RuntimeException("Partial implementation");
+		}
+		if(request.getRequestType()==TXPacket.PacketType.LOCK_REQUEST){
+			throw new RuntimeException("Successfully reached over here");
+
+		}
+
+
+		return super.handleIncoming(request,callback);
 	}
 	
 	private Application getApp() {
@@ -302,7 +335,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 		 * transaction group when the total number of active replicas is much
 		 * higher than MAX_TX_GROUP_SIZE */
 		int startIndex = txid.hashCode() % addresses.length;
-		for (int i = startIndex; group.size() < MAX_TX_GROUP_SIZE; i = (i + 1)
+		for (int i = startIndex; group.size() <   MAX_TX_GROUP_SIZE; i = (i + 1)
 				% addresses.length)
 			group.add(addresses[i]);
 		return group;
@@ -311,7 +344,9 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 	/**
 	 * There isn't an easy way to get the correct list of all active replicas at
 	 * an active replica without consulting reconfigurators. Reading it from the
-	 * config file will in general be incorrect if active replicas are added or
+	 * config file will in generaublic class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> implements TXLocker {
+
+	/**l be incorrect if active replicas are added or
 	 * deleted over time.
 	 * 
 	 * @return The set of active replica socket addresses.
@@ -330,4 +365,51 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType> i
 	protected void enqueue(Request request, boolean noReplyToClient) {
 		throw new RuntimeException("Unimplemented");
 	}
+
+	@Override
+	public  Request getRequest(byte[] bytes, NIOHeader header)
+			throws RequestParseException{
+		try{
+			String str=new String(bytes, NIOHeader.CHARSET);
+			JSONObject jsonObject=new  JSONObject(str);
+			TXPacket.PacketType packetId=TXPacket.PacketType.intToType.get(jsonObject.getInt("type"));
+			if(packetId==TXPacket.PacketType.TX_INIT){
+				TXInitRequest txInitRequest= new TXInitRequest(jsonObject);
+				txInitRequest.transaction.setEntryServer(header.sndr);
+				return txInitRequest;
+			}
+			if(packetId==TXPacket.PacketType.LOCK_REQUEST){
+				LockRequest lockRequest=new LockRequest(jsonObject);
+				return lockRequest;
+			}
+
+
+		}catch(Exception e){
+			e.printStackTrace();
+			//silent kill
+		}
+		return super.getRequest(bytes,header);
+	}
+
+	public Set<IntegerPacketType> getAppRequestTypes(){
+		return this.getRequestTypes();
+	}
+
+	@Override
+	public boolean execute(Request request) {
+		throw new RuntimeException("succeful intercept");
+//		if(request instanceof LockRequest){
+//			System.out.print("Lock successfull");
+//			return true;
+//		}
+//		return super.execute(request);
+	}
+
+	@Override
+	public boolean execute(Request request, boolean doNotReplyToClient){
+		throw new RuntimeException("succefully intercepted haha");
+
+	}
 }
+
+
