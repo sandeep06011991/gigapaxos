@@ -79,7 +79,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	/* The tuple <txid, initiator> is used to detect conflicting txids chosen by
 	 * different initiating nodes. */
 	protected final String txid;
-	private boolean failed;
+	private boolean failed=false;
 	private ResponseCode code = null;
 	private IntegerPacketType packetType;
 	private static enum Keys {

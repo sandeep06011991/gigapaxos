@@ -3,6 +3,8 @@ package edu.umass.cs.txn;
 import edu.umass.cs.txn.exceptions.TXException;
 import edu.umass.cs.txn.interfaces.TXLocker;
 
+import java.util.HashMap;
+
 /**
  * @author arun
  *
@@ -39,7 +41,7 @@ public class TXLockerMap implements TXLocker {
 	 * @param lockID
 	 * @throws TXException
 	 */
-	public void unlock(String lockID) throws TXException {
+	public boolean unlock(String lockID) throws TXException {
 		throw new RuntimeException("Unimplemented");
 	}
 
