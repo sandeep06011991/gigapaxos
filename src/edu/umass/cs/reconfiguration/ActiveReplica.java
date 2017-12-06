@@ -196,15 +196,8 @@ public class ActiveReplica<NodeIDType> implements ReconfiguratorCallback,
 			return coordinator;
 		// reflectively instantiate
 		try {
-			AbstractReplicaCoordinator<?> ret= (AbstractReplicaCoordinator<?>) clazz.getConstructor(
+			return (AbstractReplicaCoordinator<?>) clazz.getConstructor(
 					AbstractReplicaCoordinator.class).newInstance(coordinator);
-			if(coordinator instanceof PaxosReplicaCoordinator){
-				ret.app=coordinator.app;
-				coordinator.app=ret;
-
-			}
-			return coordinator;
-//			return ret;
 		} catch (InstantiationException | IllegalAccessException
 				| IllegalArgumentException | InvocationTargetException
 				| NoSuchMethodException | SecurityException e) {
@@ -1161,8 +1154,7 @@ public class ActiveReplica<NodeIDType> implements ReconfiguratorCallback,
 	}
 
 	private boolean assertAppRequest(Request request) throws JSONException {
-		assert (request.getRequestType() == ReconfigurationPacket.PacketType.REPLICABLE_CLIENT_REQUEST ||
-				this.appCoordinator.getRequestTypes().contains(request.getRequestType())||this
+		assert (request.getRequestType() == ReconfigurationPacket.PacketType.REPLICABLE_CLIENT_REQUEST || this
 				.getAppRequestTypes().contains(request.getRequestType()) 
 				// mutual auth types need to be separately accounted for
 				|| this.appCoordinator.getMutualAuthAppRequestTypes().contains(request.getRequestType())

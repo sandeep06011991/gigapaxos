@@ -299,7 +299,6 @@ public class AppRequest extends JSONPacket implements ReconfigurableRequest,
 		json.put(Keys.STOP.toString(), this.stop);
 		json.put(Keys.QVAL.toString(), this.value);
 		json.put(Keys.COORD.toString(), this.coordType);
-		json.put("type",this.type);
 		if (this.clientAddress != null)
 			json.put(Keys.CSA.toString(), this.clientAddress.toString());
 		json.putOpt(Keys.RVAL.toString(), this.response);

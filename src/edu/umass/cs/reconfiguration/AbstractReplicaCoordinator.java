@@ -78,7 +78,7 @@ import edu.umass.cs.reconfiguration.reconfigurationutils.TrivialRepliconfigurabl
 public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		Repliconfigurable, ReplicaCoordinator<NodeIDType>,
 		AppRequestParserBytes {
-	protected Repliconfigurable app;
+	protected final Repliconfigurable app;
 	private final ConcurrentHashMap<IntegerPacketType, Boolean> coordinationTypes = new ConcurrentHashMap<IntegerPacketType, Boolean>();
 
 	private ReconfiguratorCallback callback = null;
@@ -301,7 +301,7 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		return true;
 	}
 
-	public  Request getRequest(String stringified)
+	public final Request getRequest(String stringified)
 			throws RequestParseException {
 		if (JSONPacket.couldBeJSON(stringified)) {
 			boolean internal = false;
@@ -323,7 +323,7 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		return this.app.getRequest(stringified);
 	}
 
-	public Request getRequest(byte[] bytes, NIOHeader header)
+	public final Request getRequest(byte[] bytes, NIOHeader header)
 			throws RequestParseException {
 		try {
 			return ByteBuffer.wrap(bytes).getInt() == ReconfigurationPacket.PacketType.REPLICABLE_CLIENT_REQUEST
