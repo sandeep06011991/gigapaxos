@@ -301,7 +301,7 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		return true;
 	}
 
-	public Request getRequest(String stringified)
+	public final Request getRequest(String stringified)
 			throws RequestParseException {
 		if (JSONPacket.couldBeJSON(stringified)) {
 			boolean internal = false;
@@ -327,7 +327,6 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		// else
 		return this.app.getRequest(stringified);
 	}
-
 
 	private AppRequestParser parser=null;
 	private AppRequestParserBytes parserBytes=null;

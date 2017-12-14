@@ -55,37 +55,38 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		this.gpClient = TXUtils.getGPClient(coordinator);
 		this.txLocker = new TXLockerMap();
 
+
 //		this.setCallback(new TxCallback(this.gpClient));
 	}
 
 
 	protected boolean handleIncoming(Request request, ExecutedCallback callback) {
-//		throw new RuntimeException("PreDelete");
-		if(request.getRequestType()==TXPacket.PacketType.TX_INIT){
-			TXInitRequest trx=(TXInitRequest)request;
-			TreeSet<String> tt=trx.transaction.getLockList();
-			for(String t:tt){
-				trx.transaction.setEntryServer(this.getMessenger().getListeningSocketAddress());
-				Request lockRequest=new LockRequest(t,trx.transaction);
-				try {
-					this.gpClient.sendRequest(lockRequest);
-				}catch(Exception ex){
-					ex.printStackTrace();
-				}
-			}
-			throw new RuntimeException("Partial implementation");
-		}
-		if(request.getRequestType()==TXPacket.PacketType.LOCK_REQUEST){
-			throw new RuntimeException("Successfully reached over here");
-
-		}
-
-		if(request.getRequestType()==TXPacket.PacketType.LOCK_OK){
-			throw new RuntimeException("Lock ok");
-		}
-
-
-		return super.handleIncoming(request,callback);
+		throw new RuntimeException("Not Expecting");
+//		if(request.getRequestType()==TXPacket.PacketType.TX_INIT){
+//			TXInitRequest trx=(TXInitRequest)request;
+//			TreeSet<String> tt=trx.transaction.getLockList();
+//			for(String t:tt){
+//				trx.transaction.setEntryServer(this.getMessenger().getListeningSocketAddress());
+//				Request lockRequest=new LockRequest(t,trx.transaction);
+//				try {
+//					this.gpClient.sendRequest(lockRequest);
+//				}catch(Exception ex){
+//					ex.printStackTrace();
+//				}
+//			}
+//			throw new RuntimeException("Partial implementation");
+//		}
+//		if(request.getRequestType()==TXPacket.PacketType.LOCK_REQUEST){
+//			throw new RuntimeException("Successfully reached over here");
+//
+//		}
+//
+//		if(request.getRequestType()==TXPacket.PacketType.LOCK_OK){
+//			throw new RuntimeException("Lock ok");
+//		}
+//
+//
+//		return super.handleIncoming(request,callback);
 	}
 	
 	private Application getApp() {
@@ -369,7 +370,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	}
 
 
-	public Request getRequest(String str) throws RequestParseException{
+	public Request getRequestNew(String str) throws RequestParseException{
 		//Code similar to the one below, clean this mess
 		try{
 			JSONObject jsonObject=new  JSONObject(str);
@@ -393,8 +394,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 //
 	}
 
-	@Override
-	public  Request getRequest(byte[] bytes, NIOHeader header)
+	public  Request getRequestNew(byte[] bytes, NIOHeader header)
 			throws RequestParseException{
 		//Code similar to the one above, clean this mess
 		try{

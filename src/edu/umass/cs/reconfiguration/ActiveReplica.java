@@ -34,7 +34,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import edu.umass.cs.gigapaxos.interfaces.*;
-import edu.umass.cs.txn.DistTransactor;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -203,9 +202,10 @@ public class ActiveReplica<NodeIDType> implements ReconfiguratorCallback,
 		try {
 			AbstractReplicaCoordinator ret=	(AbstractReplicaCoordinator<?>) clazz.getConstructor(
 					AbstractReplicaCoordinator.class).newInstance(coordinator);
-			if(ret instanceof DistTransactor){
-				coordinator.setCallback((DistTransactor)ret);
-			}
+//
+				coordinator.setGetRequestImpl(ret);
+				coordinator.setGetRequestImpl(ret);
+//			}
 			return ret;
 //			return (AbstractReplicaCoordinator<?>) clazz.getConstructor(
 //					AbstractReplicaCoordinator.class).newInstance(coordinator);
@@ -1506,7 +1506,4 @@ public class ActiveReplica<NodeIDType> implements ReconfiguratorCallback,
 				? true: false;
 	}
 
-	public AppRequestParser	getAppRequestParser(){
-		return this.appCoordinator;
-	}
 }

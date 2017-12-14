@@ -8,9 +8,12 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.logging.Level;
 
+import edu.umass.cs.gigapaxos.interfaces.AppRequestParser;
+import edu.umass.cs.gigapaxos.interfaces.AppRequestParserBytes;
 import edu.umass.cs.gigapaxos.interfaces.ExecutedCallback;
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
+import edu.umass.cs.nio.nioutils.NIOHeader;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
@@ -39,6 +42,25 @@ public abstract class AbstractTransactor<NodeIDType> extends
 		super(coordinator);
 		this.coordinator = coordinator;
 		this.setCallback(this);
+		AppRequestParser appRequestParser=new AppRequestParser() {
+			@Override
+			public Request getRequest(String stringified) throws RequestParseException {
+				return AbstractTransactor.this.getRequestNew(stringified);
+			}
+
+			@Override
+			public Set<IntegerPacketType> getRequestTypes() {
+				return AbstractTransactor.this.getAppRequestTypes();
+			}
+		};
+		AppRequestParserBytes appRequestParserBytes=new AppRequestParserBytes() {
+			@Override
+			public Request getRequest(byte[] message, NIOHeader header) throws RequestParseException {
+				return AbstractTransactor.this.getRequestNew(message,header);
+			}
+		};
+		this.coordinator.setGetRequestImpl(appRequestParser);
+		this.coordinator.setGetRequestImpl(appRequestParserBytes);
 
 	}
 
@@ -231,4 +253,9 @@ public abstract class AbstractTransactor<NodeIDType> extends
 	public void executed(Request request, boolean handled){
 
 	}
+
+	public Request getRequestNew(String str) throws RequestParseException{throw new RuntimeException("Override this");}
+
+	public  Request getRequestNew(byte[] bytes, NIOHeader header)
+			throws RequestParseException{throw new RuntimeException("Override in child class");}
 }

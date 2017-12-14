@@ -279,7 +279,7 @@ public abstract class ReconfigurableNode<NodeIDType> {
 					app=createApp(args, nodeConfig), nodeConfig, messenger);
 			this.activeReplicas.add(activeReplica);
 			// getPacketTypes includes app's packets
-			pd.setAppRequestParser(activeReplica.getAppRequestParser()).register(activeReplica.getPacketTypes(), activeReplica);
+			pd.setAppRequestParser(app).register(activeReplica.getPacketTypes(), activeReplica);
 		} else if (nodeConfig.getReconfigurators().contains(id)) {
 			// create reconfigurator
 			Reconfigurator<NodeIDType> reconfigurator = new Reconfigurator<NodeIDType>(
