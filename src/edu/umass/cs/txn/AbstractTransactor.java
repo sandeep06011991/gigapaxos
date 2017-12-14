@@ -35,32 +35,33 @@ import edu.umass.cs.utils.GCConcurrentHashMap;
  */
 public abstract class AbstractTransactor<NodeIDType> extends
 		AbstractReplicaCoordinator<NodeIDType> implements ReconfiguratorCallback {
+
 	private final AbstractReplicaCoordinator<NodeIDType> coordinator;
 
 	protected AbstractTransactor(
 			AbstractReplicaCoordinator<NodeIDType> coordinator) {
 		super(coordinator);
 		this.coordinator = coordinator;
-		this.setCallback(this);
+		this.coordinator.setCallback(this);
 		AppRequestParser appRequestParser=new AppRequestParser() {
 			@Override
 			public Request getRequest(String stringified) throws RequestParseException {
 				return AbstractTransactor.this.getRequestNew(stringified);
 			}
+			@Override
+			public Request getRequest(byte[] message, NIOHeader header) throws RequestParseException {
+				return AbstractTransactor.this.getRequestNew(message,header);
 
+			}
 			@Override
 			public Set<IntegerPacketType> getRequestTypes() {
 				return AbstractTransactor.this.getAppRequestTypes();
 			}
 		};
-		AppRequestParserBytes appRequestParserBytes=new AppRequestParserBytes() {
-			@Override
-			public Request getRequest(byte[] message, NIOHeader header) throws RequestParseException {
-				return AbstractTransactor.this.getRequestNew(message,header);
-			}
-		};
+
 		this.coordinator.setGetRequestImpl(appRequestParser);
-		this.coordinator.setGetRequestImpl(appRequestParserBytes);
+		this.coordinator.setGetRequestImpl((AppRequestParserBytes) appRequestParser);
+		this.setGetRequestImpl(appRequestParser);
 
 	}
 
@@ -257,5 +258,6 @@ public abstract class AbstractTransactor<NodeIDType> extends
 	public Request getRequestNew(String str) throws RequestParseException{throw new RuntimeException("Override this");}
 
 	public  Request getRequestNew(byte[] bytes, NIOHeader header)
-			throws RequestParseException{throw new RuntimeException("Override in child class");}
+			throws RequestParseException{
+		throw new RuntimeException("Override in child class");}
 }

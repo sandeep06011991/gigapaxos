@@ -19,9 +19,18 @@ public class TXLockerMap implements TXLocker {
 	 * @param lockID
 	 * @throws TXException
 	 */
+
+	private HashMap<String,String> txMap=new HashMap<>();
+	private HashMap<String,String> stateMap=new HashMap<>();
+
 	@Override
-	public void lock(String lockID) throws TXException {
-		throw new RuntimeException("Unimplemented");
+	public boolean lock(String serviceName,String lockID,String state) throws TXException {
+		if(!(txMap.containsKey(serviceName))){
+			txMap.put(serviceName,lockID);
+			stateMap.put(serviceName,state);
+			return true;
+		}
+		return false;
 	}
 
 	/**
@@ -41,8 +50,16 @@ public class TXLockerMap implements TXLocker {
 	 * @param lockID
 	 * @throws TXException
 	 */
-	public boolean unlock(String lockID) throws TXException {
-		throw new RuntimeException("Unimplemented");
+	public boolean unlock(String serviceName,String lockID) throws TXException {
+		if(!(txMap.containsKey(serviceName))){
+			String lckID=txMap.get(serviceName);
+			if(lckID.equals(lockID)){
+				stateMap.remove(serviceName);
+				txMap.remove(serviceName);
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -55,4 +72,11 @@ public class TXLockerMap implements TXLocker {
 		throw new RuntimeException("Unimplemented");
 	}
 
+
+	public boolean isLocked(String serviceName){
+		if(txMap.containsKey(serviceName)){
+			return true;
+		}
+		return false;
+	}
 }

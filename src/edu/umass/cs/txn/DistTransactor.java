@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.locks.Lock;
 
 import edu.umass.cs.gigapaxos.interfaces.*;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
@@ -35,7 +36,7 @@ import org.json.JSONObject;
  * @param <NodeIDType>
  */
 public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
-		implements TXLocker,Replicable {
+		implements Replicable {
 
 	/**
 	 * A distributed transaction processor needs a client to submit transaction
@@ -52,41 +53,42 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	public DistTransactor(AbstractReplicaCoordinator<NodeIDType> coordinator)
 			throws IOException {
 		super(coordinator);
-		this.gpClient = TXUtils.getGPClient(coordinator);
+		this.gpClient = TXUtils.getGPClient(this);
 		this.txLocker = new TXLockerMap();
-
-
-//		this.setCallback(new TxCallback(this.gpClient));
 	}
 
 
 	protected boolean handleIncoming(Request request, ExecutedCallback callback) {
-		throw new RuntimeException("Not Expecting");
-//		if(request.getRequestType()==TXPacket.PacketType.TX_INIT){
-//			TXInitRequest trx=(TXInitRequest)request;
+		// This can be a direct Request
+		if(request.getRequestType()==TXPacket.PacketType.TX_INIT){
+			TXInitRequest trx=(TXInitRequest)request;
+			try {
+				transact(trx.transaction);
+			}catch(Exception ex){
+				ex.printStackTrace();
+				System.out.println("Ideally retry later");
+			}
+			return true;
+		}
 //			TreeSet<String> tt=trx.transaction.getLockList();
 //			for(String t:tt){
 //				trx.transaction.setEntryServer(this.getMessenger().getListeningSocketAddress());
 //				Request lockRequest=new LockRequest(t,trx.transaction);
 //				try {
-//					this.gpClient.sendRequest(lockRequest);
+//					Request rq=this.gpClient.sendRequest(lockRequest);
+//					if(rq instanceof LockRequest){
+//						System.out.println("Status of Lock");
+//						System.out.println(((LockRequest) rq).success);
+//					}
 //				}catch(Exception ex){
 //					ex.printStackTrace();
 //				}
 //			}
+//			return true;
 //			throw new RuntimeException("Partial implementation");
 //		}
-//		if(request.getRequestType()==TXPacket.PacketType.LOCK_REQUEST){
-//			throw new RuntimeException("Successfully reached over here");
-//
-//		}
-//
-//		if(request.getRequestType()==TXPacket.PacketType.LOCK_OK){
-//			throw new RuntimeException("Lock ok");
-//		}
-//
-//
-//		return super.handleIncoming(request,callback);
+
+		return super.handleIncoming(request,callback);
 	}
 	
 	private Application getApp() {
@@ -102,9 +104,9 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	 * @param lockID
 	 * @throws TXException
 	 */
-	public void lock(String lockID) throws TXException {
-		this.txLocker.lock(lockID);
-	}
+//	public void lock(String lockID) throws TXException {
+//		this.txLocker.lock(lockID);
+//	}
 
 	/**
 	 * Acquires the locks in the order specified by {@code lockIDs}.
@@ -196,19 +198,20 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	public void transact(Transaction tx) throws TXException,ReconfigurableAppClientAsync.ReconfigurationException {
 		boolean locked = false, executed = false, committed = false;
 		try {
-			if (this.createTxGroup(tx) && (locked = getLocks(tx))
-					&& (executed = executeTxOps(tx))
-					&& (committed = commit(tx)) && releaseLocks(tx))
+			if (this.createTxGroup(tx) && (locked = getLocks(tx)))
+//					&& (executed = executeTxOps(tx))
+//					&& (committed = commit(tx)) && releaseLocks(tx))
 				// all is good
 				return;
 
 		} catch (IOException e) {
 			throw new TXException(ResponseCode.IOEXCEPTION, e);
-		} finally {
-			// abort
-			if (!committed)
-				abort(tx, locked, executed);
 		}
+//		} finally {
+//			// abort
+//			if (!committed)
+//				abort(tx, locked, executed);
+//		}
 	}
 
 	private void abort(Transaction tx, boolean locked, boolean executed)
@@ -258,6 +261,8 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	}
 
 	private boolean getLocks(Transaction tx) throws TXException, IOException {
+		System.out.println("Reached");
+		System.out.println(tx.entryServer);
 		for (String lockID : tx.getLockList())
 			if (((LockRequest) gpClient.sendRequest(new LockRequest(lockID,
 			/* The client ID is used as the ID of the initiator. */
@@ -265,20 +270,23 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 				throw new TXException(ResponseCode.LOCK_FAILURE,
 						"Failed to acquire lock " + lockID);
 		;
+		System.out.println("Lock ok");
 		return true;
 	}
 
 	private boolean executeTxOps(Transaction tx) throws TXException,
 			IOException {
-		Request response;
-		for (TxOp op : tx.getTxOps())
-			if (!op.handleResponse(response = gpClient.sendRequest(op)))
-				throw new TXException(ResponseCode.TXOP_FAILURE,
-						"Failed to execute transaction operation "
-								+ op.getSummary() + " : "
-								+ response.getSummary());
-
-		return true;
+		System.out.println("Reached here");
+		throw new RuntimeException("Still Implementing");
+//		Request response;
+//		for (TxOp op : tx.getTxOps())
+//			if (!op.handleResponse(response = gpClient.sendRequest(op)))
+//				throw new TXException(ResponseCode.TXOP_FAILURE,
+//						"Failed to execute transaction operation "
+//								+ op.getSummary() + " : "
+//								+ response.getSummary());
+//
+//		return true;
 	}
 
 	private boolean releaseLocks(Transaction tx) throws TXException {
@@ -294,7 +302,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		return true;
 	}
 
-	private boolean fixedTXGroupCreated = false;
+	private boolean fixedTXGroupCreated = true;
 	private static final boolean FIXED_TX_GROUP = true;
 
 	/**
@@ -397,25 +405,15 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	public  Request getRequestNew(byte[] bytes, NIOHeader header)
 			throws RequestParseException{
 		//Code similar to the one above, clean this mess
+		//This seems unecessary as something similar already exists
+//		as a default method
 		try{
 			String str=new String(bytes, NIOHeader.CHARSET);
 			Request request=getRequest(str);
+			if(request instanceof TXInitRequest){
+				((TXInitRequest) request).transaction.entryServer=header.sndr;
+			}
 			return request;
-//			JSONObject jsonObject=new  JSONObject(str);
-//			TXPacket.PacketType packetId=TXPacket.PacketType.intToType.get(jsonObject.getInt("type"));
-//			if(packetId==TXPacket.PacketType.TX_INIT){
-//				TXInitRequest txInitRequest= new TXInitRequest(jsonObject);
-//				txInitRequest.transaction.setEntryServer(header.sndr);
-//				return txInitRequest;
-//			}
-//			if(packetId==TXPacket.PacketType.LOCK_REQUEST){
-//				LockRequest lockRequest=new LockRequest(jsonObject);
-//				return lockRequest;
-//			}
-//			if(packetId==TXPacket.PacketType.LOCK_OK){
-//				LockRequest lockRequest=new LockRequest(jsonObject);
-//				return lockRequest;
-//			}
 		}catch(Exception e){
 			e.printStackTrace();
 			//silent kill
@@ -428,92 +426,57 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		return this.getRequestTypes();
 	}
 
-	@Override
-	public boolean execute(Request request) {
-		return execute(request,false);
-//		if(request instanceof LockRequest){
-//			System.out.print("Lock successfull");
-//			return true;
-//		}
-//		return super.execute(request);
-	}
 
 
-	@Override
-	public boolean execute(Request request, boolean doNotReplyToClient){
-		throw new RuntimeException("Execution should not happenned");
-//		if(request instanceof TXInitRequest){
-//			TXInitRequest trx=(TXInitRequest)request;
-//			TreeSet<String> tt=trx.transaction.getLockList();
-//			for(String t:tt){
-////				trx.transaction.setEntryServer(this.getMessenger().getListeningSocketAddress());
-//				Request lockRequest=new LockRequest(t,trx.transaction);
-//				try {
-//					System.out.println("Begin locking");
-////					RequestFuture r=this.gpClient.sendRequest(lockRequest, new RequestCallback() {
-////						@Override
-////						public void handleResponse(Request response) {
-////							System.out.println(response.getRequestType().toString());
-////							System.out.println("Lock successfull");
-////						}search?utf8=✓&q=mobility+first&type=
-////					});
-//					Request request1=this.gpClient.sendRequest(lockRequest);
-//					if(request1 instanceof LockRequest){
-//						System.out.print(("Acquire Lock Status:"));
-//						System.out.println(((TXInitRequest) request).isFailed());
-//					}
-//					return true;
-//				}catch(Exception ex){
-//					ex.printStackTrace();
-//				}
-//			}
-//		}
-//		if(request instanceof LockRequest){
-//			LockRequest response=new LockRequest(((LockRequest) request).getLockID(),((LockRequest) request).getTXID());
-//			((LockRequest) request).response=response;
-//			return true;
-//		}
-//		return this.app.execute(request);
-
-	}
 
 	@Override
 	public boolean preExecuted(Request request) {
 		if(request==null){return false;}
 		if(request instanceof TXInitRequest){
 			TXInitRequest trx=(TXInitRequest)request;
-			TreeSet<String> tt=trx.transaction.getLockList();
-			for(String t:tt){
-//				trx.transaction.setEntryServer(this.getMessenger().getListeningSocketAddress());
-				Request lockRequest=new LockRequest(t,trx.transaction);
-				try {
-					System.out.println("Begin locking");
-//					RequestFuture r=this.gpClient.sendRequest(lockRequest, new RequestCallback() {
-//						@Override
-//						public void handleResponse(Request response) {
-//							System.out.println(response.getRequestType().toString());
-//							System.out.println("Lock successfull");
-//						}search?utf8=✓&q=mobility+first&type=
-//					});
-					Request request1=this.gpClient.sendRequest(lockRequest);
-					if(request1 instanceof LockRequest){
-						System.out.print(("Acquire Lock Status:"));
-						System.out.println(((TXInitRequest) request).isFailed());
-					}
-					return true;
-				}catch(Exception ex){
-					ex.printStackTrace();
-				}
+			try {
+				transact(trx.transaction);
+				trx.transaction.getTXID();
+			}catch(Exception ex){
+				ex.printStackTrace();
+				System.out.println("Ideally retry later");
 			}
+			return true;
+			//Clean this up later;
+
+//			TreeSet<String> tt=trx.transaction.getLockList();
+//			boolean state=false;
+//			for(String t:tt){
+//				Request lockRequest=new LockRequest(t,trx.transaction);
+//				try {
+//					System.out.println("Begin locking");
+//					Request request1=this.gpClient.sendRequest(lockRequest);
+//					if(request1 instanceof LockRequest){
+//						System.out.print(("Acquire Lock Status:"));
+//						System.out.println(((LockRequest) request1).success);
+//					}
+//					state=true;
+//				}catch(Exception ex){
+//					ex.printStackTrace();
+//				}
+//			}
+
 		}
 		if(request instanceof LockRequest){
+			String state=this.getCoordinator().checkpoint(request.getServiceName());
 			LockRequest response=new LockRequest(((LockRequest) request).getLockID(),((LockRequest) request).getTXID());
+			boolean status=false;
+			try{
+				status=this.txLocker.lock(request.getServiceName(),((LockRequest) request).getLockID(),state);
+			}catch(Exception ex){
+
+			}
+			response.failed=!status;
 			((LockRequest) request).response=response;
 			return true;
 		}
 		return false;
 	}
-
 
 }
 

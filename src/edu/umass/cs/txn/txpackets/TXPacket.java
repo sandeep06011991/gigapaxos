@@ -79,7 +79,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	/* The tuple <txid, initiator> is used to detect conflicting txids chosen by
 	 * different initiating nodes. */
 	protected final String txid;
-	private boolean failed=false;
+	public boolean failed=false;
 	private ResponseCode code = null;
 	private IntegerPacketType packetType;
 	private static enum Keys {
@@ -103,6 +103,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	public TXPacket(JSONObject json) throws JSONException {
 		super(json);
 		this.txid = json.getString(Keys.TXID.toString());
+		this.failed=json.getBoolean("failed");
 
 	}
 
@@ -148,8 +149,8 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	public boolean isFailed() {
 		return this.failed;
 	}
-
-	protected TXPacket setFailed() {
+	//Why is this private
+	public TXPacket setFailed() {
 		this.failed = true;
 		return this;
 	}
@@ -182,6 +183,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	public JSONObject toJSONObject() throws JSONException {
 		JSONObject jsonObject=super.toJSONObject();
 		jsonObject.put(Keys.TXID.toString(),txid);
+		jsonObject.put("failed",this.failed);
 		return jsonObject;
 	}
 

@@ -15,6 +15,10 @@ public interface TXLocker {
 	 * @param lockID
 	 * @throws TXException
 	 */
-	public void lock(String lockID) throws TXException;
+	//Why is this void??
+	public boolean lock(String serviceName,String lockID,String state) throws TXException;
 
+	public boolean	isLocked(String lockID);
+
+	public boolean unlock(String serviceName,String lockID) throws TXException;
 }

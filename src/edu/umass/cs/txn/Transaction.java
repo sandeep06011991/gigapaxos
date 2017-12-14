@@ -46,7 +46,7 @@ public class Transaction implements TXInterface {
 	private final long txn;
 
 	// the server issuing the transaction
-	private InetSocketAddress entryServer;
+	public InetSocketAddress entryServer;
 
 	ArrayList<TxOp> txOps;
 	/**

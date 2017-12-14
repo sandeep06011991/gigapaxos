@@ -178,7 +178,10 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 	 * @param callback
 	 * @return {@code this}
 	 */
-	protected final AbstractReplicaCoordinator<NodeIDType> setCallback(
+	//	Defend this
+	//	DistTransactor which is an external class should set the callback
+	//	of PaxosCoordinator
+	public final AbstractReplicaCoordinator<NodeIDType> setCallback(
 			ReconfiguratorCallback callback) {
 		/**
 		 * The correctness of Reconfigurator relies on the following as
@@ -341,6 +344,10 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 	public final Request getRequest(byte[] bytes, NIOHeader header)
 			throws RequestParseException {
 		try {
+				if(this.parser != null){
+					return this.parser.getRequest(bytes,header);
+				}
+
 			return ByteBuffer.wrap(bytes).getInt() == ReconfigurationPacket.PacketType.REPLICABLE_CLIENT_REQUEST
 					.getInt() ? (this.app instanceof AppRequestParserBytes ? new ReplicableClientRequest(
 					bytes, header, (AppRequestParserBytes) this.app)
