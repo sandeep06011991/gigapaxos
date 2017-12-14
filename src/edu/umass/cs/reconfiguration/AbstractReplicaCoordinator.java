@@ -320,10 +320,26 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 				// else ignore and treat as app request
 			}
 		}
+		Request request = null;
+		if(this.parser!=null && (request = this.parser.getRequest(stringified))
+				!=null)
+			return request;
+		// else
 		return this.app.getRequest(stringified);
 	}
 
-	public Request getRequest(byte[] bytes, NIOHeader header)
+
+	private AppRequestParser parser=null;
+	private AppRequestParserBytes parserBytes=null;
+
+	public void setGetRequestImpl(AppRequestParser parser) {
+		this.parser = parser;
+	}
+	public void setGetRequestImpl(AppRequestParserBytes parserBytes) {
+		this.parserBytes = parserBytes;
+	}
+
+	public final Request getRequest(byte[] bytes, NIOHeader header)
 			throws RequestParseException {
 		try {
 			return ByteBuffer.wrap(bytes).getInt() == ReconfigurationPacket.PacketType.REPLICABLE_CLIENT_REQUEST
