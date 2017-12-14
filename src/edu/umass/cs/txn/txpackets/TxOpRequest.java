@@ -69,7 +69,7 @@ public class TxOpRequest extends TXPacket implements TxOp {
 	public JSONObject toJSONObject() throws JSONException {
 		JSONObject jsonObject=super.toJSONObject();
 		if(request instanceof AppRequest){
-			jsonObject.put(Keys.REQUEST.toString(),((AppRequest) request).toJSONObjectImpl());
+			jsonObject.put(Keys.REQUEST.toString(),((AppRequest) request).toJSONObject());
 		}
 		return jsonObject;
 	}
@@ -77,12 +77,16 @@ public class TxOpRequest extends TXPacket implements TxOp {
 	public TxOpRequest(JSONObject jsonObject)throws JSONException{
 		super(jsonObject);
 		String req=jsonObject.getString(Keys.REQUEST.toString());
+		Request temp=null;
+		System.out.println(req);
 		try {
-			request=NoopApp.staticGetRequest(req);
-		}catch(Exception ex){
-			throw new JSONException("Request could not be parsed");
+			temp=NoopApp.staticGetRequest(req);
+		}catch(RequestParseException ex){
+			//This should never be thrown
+			new JSONException("Request Parse Exceptopn");
 		}
-		}
+		request=temp;
+	}
 
 	public String getServiceName(){
 		return this.request.getServiceName();

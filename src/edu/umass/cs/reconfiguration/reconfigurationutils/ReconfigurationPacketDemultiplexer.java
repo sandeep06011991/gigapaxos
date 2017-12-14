@@ -116,9 +116,10 @@ public class ReconfigurationPacketDemultiplexer extends
 		// else must be app packet
 		if (this.appRequestparser != null) {
 			try {
-				if (this.appRequestparser instanceof AppRequestParserBytes)
+				if (this.appRequestparser instanceof AppRequestParserBytes) {
 					return ((AppRequestParserBytes) this.appRequestparser)
 							.getRequest(message, header);
+				}
 				else
 					return this.appRequestparser.getRequest(new String(message,
 							MessageNIOTransport.NIO_CHARSET_ENCODING));

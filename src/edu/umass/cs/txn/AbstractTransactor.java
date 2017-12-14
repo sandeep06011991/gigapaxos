@@ -15,8 +15,11 @@ import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
 import edu.umass.cs.reconfiguration.interfaces.ReconfigurableRequest;
+import edu.umass.cs.reconfiguration.interfaces.ReconfiguratorCallback;
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
 import edu.umass.cs.txn.interfaces.TXInterface;
+import edu.umass.cs.txn.txpackets.LockRequest;
+import edu.umass.cs.txn.txpackets.TXInitRequest;
 import edu.umass.cs.txn.txpackets.TXPacket;
 import edu.umass.cs.txn.txpackets.TxOpRequest;
 import edu.umass.cs.utils.Config;
@@ -28,13 +31,14 @@ import edu.umass.cs.utils.GCConcurrentHashMap;
  * @param <NodeIDType>
  */
 public abstract class AbstractTransactor<NodeIDType> extends
-		AbstractReplicaCoordinator<NodeIDType> {
+		AbstractReplicaCoordinator<NodeIDType> implements ReconfiguratorCallback {
 	private final AbstractReplicaCoordinator<NodeIDType> coordinator;
 
 	protected AbstractTransactor(
 			AbstractReplicaCoordinator<NodeIDType> coordinator) {
 		super(coordinator);
 		this.coordinator = coordinator;
+		this.setCallback(this);
 
 	}
 
@@ -209,5 +213,22 @@ public abstract class AbstractTransactor<NodeIDType> extends
 
 	public AbstractReplicaCoordinator<NodeIDType> getCoordinator() {
 		return coordinator;
+	}
+
+
+
+	@Override
+	public boolean preRestore(String name, String state) {
+		throw new RuntimeException("unexecpeted");
+	}
+
+	@Override
+	public String preCheckpoint(String name) {
+		throw new RuntimeException("unexecpeted");
+	}
+
+	@Override
+	public void executed(Request request, boolean handled){
+
 	}
 }

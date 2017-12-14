@@ -291,7 +291,8 @@ public class AppRequest extends JSONPacket implements ReconfigurableRequest,
 		return this.id;
 	}
 
-	public JSONObject toJSONObjectImpl() throws JSONException {
+	@Override
+	protected JSONObject toJSONObjectImpl() throws JSONException {
 		JSONObject json = new JSONObject();
 		json.put(Keys.NAME.toString(), this.name);
 		json.put(Keys.EPOCH.toString(), this.epoch);

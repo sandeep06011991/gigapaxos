@@ -301,7 +301,7 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		return true;
 	}
 
-	public final Request getRequest(String stringified)
+	public Request getRequest(String stringified)
 			throws RequestParseException {
 		if (JSONPacket.couldBeJSON(stringified)) {
 			boolean internal = false;
@@ -323,7 +323,7 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		return this.app.getRequest(stringified);
 	}
 
-	public final Request getRequest(byte[] bytes, NIOHeader header)
+	public Request getRequest(byte[] bytes, NIOHeader header)
 			throws RequestParseException {
 		try {
 			return ByteBuffer.wrap(bytes).getInt() == ReconfigurationPacket.PacketType.REPLICABLE_CLIENT_REQUEST

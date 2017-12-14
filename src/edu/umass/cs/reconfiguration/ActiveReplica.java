@@ -33,15 +33,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import edu.umass.cs.gigapaxos.interfaces.*;
+import edu.umass.cs.txn.DistTransactor;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import edu.umass.cs.gigapaxos.PaxosConfig;
-import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
-import edu.umass.cs.gigapaxos.interfaces.ExecutedCallback;
-import edu.umass.cs.gigapaxos.interfaces.Replicable;
-import edu.umass.cs.gigapaxos.interfaces.Request;
-import edu.umass.cs.gigapaxos.interfaces.RequestIdentifier;
 import edu.umass.cs.gigapaxos.paxospackets.PaxosPacket;
 import edu.umass.cs.gigapaxos.paxospackets.RequestPacket;
 import edu.umass.cs.gigapaxos.paxosutil.OverloadException;
@@ -196,8 +193,14 @@ public class ActiveReplica<NodeIDType> implements ReconfiguratorCallback,
 			return coordinator;
 		// reflectively instantiate
 		try {
-			return (AbstractReplicaCoordinator<?>) clazz.getConstructor(
+			AbstractReplicaCoordinator ret=	(AbstractReplicaCoordinator<?>) clazz.getConstructor(
 					AbstractReplicaCoordinator.class).newInstance(coordinator);
+			if(ret instanceof DistTransactor){
+				coordinator.setCallback((DistTransactor)ret);
+			}
+			return ret;
+//			return (AbstractReplicaCoordinator<?>) clazz.getConstructor(
+//					AbstractReplicaCoordinator.class).newInstance(coordinator);
 		} catch (InstantiationException | IllegalAccessException
 				| IllegalArgumentException | InvocationTargetException
 				| NoSuchMethodException | SecurityException e) {
@@ -1491,5 +1494,9 @@ public class ActiveReplica<NodeIDType> implements ReconfiguratorCallback,
 						AbstractReconfiguratorDB.RecordNames.AR_RC_NODES.toString())
 //				|| request.getServiceName().equals(ReconfigurationConfig.getDefaultServiceName())
 				? true: false;
+	}
+
+	public AppRequestParser	getAppRequestParser(){
+		return this.appCoordinator;
 	}
 }

@@ -1,5 +1,6 @@
 
 server:
+	ant
 	rm -f tmp/*
 	rm -rf paxos_logs/*
 	rm -rf reconfiguration_DB/*
