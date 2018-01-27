@@ -132,15 +132,15 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> implements 
      * @throws IOException
      */
     public static void main(String[] args) throws IOException {
-         client = new TxnClient ();
+        client = new TxnClient ();
         final int numNames = 1;
         final int numReqs = 1;
-        String namePrefix = "some_name";
+        String namePrefix = "Service_name_txn";
         String initialState = "some_default_initial_state";
 
         for (int i = 0; i < numNames; i++) {
-            final String name = namePrefix
-                    + ((int) (Math.random() * Integer.MAX_VALUE));
+            final String name = namePrefix;
+//                    + ((int) (Math.random() * Integer.MAX_VALUE));
             System.out.println("Creating name " + name);
             client.sendRequest(new CreateServiceName(name, initialState),
                     new RequestCallback() {

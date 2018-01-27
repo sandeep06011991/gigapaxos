@@ -1,5 +1,6 @@
 package edu.umass.cs.txn.txpackets;
 
+import edu.umass.cs.protocoltask.ProtocolEvent;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -16,7 +17,7 @@ import edu.umass.cs.utils.IntegerPacketTypeMap;
  *         All transaction processing related packets inherit from this class.
  */
 public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
-		ClientRequest {
+		ClientRequest,ProtocolEvent {
 
 	/**
 	 * Transaction packet types.
@@ -190,4 +191,25 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	public PacketType getTXPacketType(){
 		return (PacketType)getRequestType();
 	}
+
+	@Override
+	public Object getType() {
+		return getTXPacketType();
+	}
+
+	@Override
+	public Object getMessage() {
+		return TXPacket.this;
+	}
+
+	@Override
+	public void setKey(Object key) {
+		throw new RuntimeException("set Key event should never be called");
+	}
+
+	@Override
+	public Object getKey() {
+		return txid;
+	}
+
 }

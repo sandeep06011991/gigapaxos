@@ -161,7 +161,7 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		this.messenger = messenger;
 	}
 
-	protected Messenger<NodeIDType, ?> getMessenger() {
+	public Messenger<NodeIDType, ?> getMessenger() {
 		return this.messenger;
 	}
 

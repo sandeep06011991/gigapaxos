@@ -5,14 +5,10 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.TreeSet;
 
-import edu.umass.cs.gigapaxos.interfaces.AppRequestParser;
 import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
-import edu.umass.cs.nio.interfaces.IntegerPacketType;
-import edu.umass.cs.reconfiguration.examples.AppRequest;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.ClientReconfigurationPacket;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.DeleteServiceName;
 import edu.umass.cs.txn.interfaces.TXInterface;
-import edu.umass.cs.txn.interfaces.TXRequest;
 import edu.umass.cs.txn.interfaces.TxOp;
 import edu.umass.cs.txn.txpackets.TxOpRequest;
 import edu.umass.cs.utils.GCConcurrentHashMap;
@@ -47,6 +43,8 @@ public class Transaction implements TXInterface {
 
 	// the server issuing the transaction
 	public InetSocketAddress entryServer;
+
+	String nodeId;
 
 	ArrayList<TxOp> txOps;
 	/**
@@ -89,9 +87,9 @@ public class Transaction implements TXInterface {
 	 *         transaction number.
 	 */
 	public String getTXID() {
-
-		return this.entryServer.getAddress().getHostAddress() + ":"
-				+ this.entryServer.getPort() + ":" + this.txn;
+		return Long.toString(txn);
+//		return this.entryServer.getAddress().getHostAddress() + ":"
+//				+ this.entryServer.getPort() + ":" + this.txn;
 	}
 
 	/**
@@ -151,6 +149,9 @@ public class Transaction implements TXInterface {
 			j.add(txOp.toJSONObject());
 		}
 		jsonObject.put("txOps",j);
+		if(nodeId!=null) {
+			jsonObject.put("nodeId", nodeId);
+		}
 		return jsonObject;
 	}
 
@@ -160,6 +161,9 @@ public class Transaction implements TXInterface {
 		txOps=new ArrayList<>();
 		for(int i=0;i<j_txops.length();i++){
 			txOps.add(new TxOpRequest((JSONObject) j_txops.get(i)));
+		}
+		if(jsonObject.has("nodeId")){
+			nodeId = jsonObject.getString("nodeId");
 		}
 
 	}

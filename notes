@@ -1,0 +1,26 @@
+Question
+c. What does the handleMethod take as an input
+
+a.  Completely understand ProtocolExecutor ??
+ProtocolPacket
+ProtocolTask
+MessageTask
+
+b.  How are Messaging Tasks handled ??
+c.  How are messages to services sent and received
+NIOMessenger -> Packet Demultiplexer(to receive Messsages) and NodeConfig(to get address)
+ProtocolExecuter(Takes in NIOMesseger to send)
+and all received messages are to be handed off via handleMessage
+
+c. Where does the protocol executor wait for messages ??
+At handleMessage
+On recieve can either spawn another protocolTask or stay if it is not removed or respond with messages
+
+
+
+Objective 1:
+
+The primary cleanly executes the transaction without aborting.
+This goes through all the 3 phases of lock, execute and abort.
+
+Talk to arun about flexible replication
