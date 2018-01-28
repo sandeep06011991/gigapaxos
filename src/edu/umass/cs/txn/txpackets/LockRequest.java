@@ -71,4 +71,10 @@ public class LockRequest extends TXPacket {
 	public boolean needsCoordination() {
 		return coordination;
 	}
+
+	@Override
+	public Object getKey() {
+		return txid+"Lock";
+	}
+
 }

@@ -20,6 +20,7 @@ public class UnlockRequest extends TXPacket {
 		super(TXPacket.PacketType.UNLOCK_REQUEST, null);
 		this.lockID = lockID;
 		this.txID = txID;
+
 	}
 
 	public UnlockRequest(JSONObject json) throws JSONException {
@@ -28,11 +29,27 @@ public class UnlockRequest extends TXPacket {
 		this.txID = json.getString(Keys.TXID.toString());
 	}
 
-	public JSONObject toJSONObjectImpl() {
-		throw new RuntimeException("Unimplemented");
-	}
-	
 	public String getTXID() {
 		return this.txID;
 	}
+
+
+	public String getLockID() {
+		return this.lockID;
+	}
+
+	public String getServiceName() {
+		return this.getLockID();
+	}
+
+	@Override
+	public boolean needsCoordination() {
+		return true;
+	}
+
+	@Override
+	public Object getKey() {
+		return txid+"Unlock";
+	}
+
 }

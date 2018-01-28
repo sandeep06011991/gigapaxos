@@ -28,24 +28,27 @@ public class TxLockProtocolTask<NodeIDType> implements
             ptasks[0]=new TxExecuteProtocolTask<NodeIDType>(this.transaction);
         }
         ProtocolExecutor.enqueueCancel(this.getKey());
+        System.out.println("Lock Phase Complete");
         return null;
     }
 
     @Override
-    public GenericMessagingTask<NodeIDType, ?>[] start() {
+    public GenericMessagingTask<NodeIDType, TxLockProtocolTask>[] start() {
 
         TreeSet<String> tt = transaction.getLockList();
         ArrayList<Integer> integers = new ArrayList<Integer>(1);
-        ArrayList<GenericMessagingTask<NodeIDType, TxLockProtocolTask>> ret = new ArrayList<>(1);
+        GenericMessagingTask<NodeIDType, TxLockProtocolTask>[] mtasks = new GenericMessagingTask[tt.size()];
+        int i=0;
         for (String t : tt) {
             Request lockRequest = new LockRequest(t, transaction);
             ArrayList<Request> obj = new ArrayList(1);
-            GenericMessagingTask temp = new GenericMessagingTask<NodeIDType, TxLockProtocolTask>(integers.toArray(), obj.toArray());
-            ret.add(temp);
-            System.out.println("Begin locking");
-    		}
-        return (GenericMessagingTask<NodeIDType, TxLockProtocolTask>[]) ret.toArray();
-//        return new GenericMessagingTask[0];
+            obj.add(lockRequest);
+            GenericMessagingTask temp =
+                    new GenericMessagingTask<NodeIDType, TxLockProtocolTask>(integers.toArray(), obj.toArray());
+            mtasks[i]=temp;
+            System.out.println("Begin Locking");
+            }
+        return mtasks;
     }
 
 

@@ -20,6 +20,7 @@ import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
 import edu.umass.cs.txn.exceptions.ResponseCode;
 import edu.umass.cs.txn.exceptions.TXException;
 import edu.umass.cs.txn.interfaces.TXLocker;
+import edu.umass.cs.txn.interfaces.TxOp;
 import edu.umass.cs.txn.protocol.TxLockProtocolTask;
 import edu.umass.cs.txn.protocol.TxMessenger;
 import edu.umass.cs.txn.txpackets.*;
@@ -44,7 +45,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	 */
 	final public  ReconfigurableAppClientAsync<Request> gpClient;
 	
-	final ProtocolExecutor<NodeIDType,TXPacket,String> protocolExecutor;
+	final ProtocolExecutor<NodeIDType,TXPacket.PacketType,String> protocolExecutor;
 
 	private final TXLocker txLocker;
 
@@ -407,8 +408,8 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		if(request instanceof TXInitRequest){
 			TXInitRequest trx=(TXInitRequest)request;
 			try {
-				if(trx.transaction.nodeId==getMyID()){
-					//System.out.print()
+				if(trx.transaction.nodeId.equals(getMyID())){
+					System.out.println("Initiating Transaction");
 					this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(trx.transaction));
 				}
 				trx.transaction.getTXID();
@@ -444,12 +445,26 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			try{
 				status=this.txLocker.lock(request.getServiceName(),((LockRequest) request).getLockID(),state);
 			}catch(Exception ex){
-
 			}
 			response.failed=!status;
 			((LockRequest) request).response=response;
 			return true;
 		}
+
+		if(request instanceof UnlockRequest){
+			UnlockRequest unlockRequest=(UnlockRequest)request ;
+			unlockRequest.response=new UnlockRequest(unlockRequest.getLockID(),unlockRequest.getTXID());
+			unlockRequest.response.failed=false;
+			return true;
+		}
+
+		if(request instanceof TxOpRequest){
+			TxOpRequest txOp=(TxOpRequest) request;
+			txOp.response=txOp;
+			txOp.failed=false;
+			return true;
+		}
+
 		return false;
 	}
 

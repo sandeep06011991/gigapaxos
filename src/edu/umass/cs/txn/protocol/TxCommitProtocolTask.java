@@ -1,33 +1,69 @@
 package edu.umass.cs.txn.protocol;
 
-
+import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.nio.GenericMessagingTask;
 import edu.umass.cs.protocoltask.ProtocolEvent;
+import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
+import edu.umass.cs.txn.Transaction;
+import edu.umass.cs.txn.txpackets.LockRequest;
 import edu.umass.cs.txn.txpackets.TXPacket;
+import edu.umass.cs.txn.txpackets.UnlockRequest;
 
-import java.util.Set;
+import java.util.*;
 
-public class TxCommitProtocolTask<NodeIDType>
-        implements ProtocolTask<NodeIDType, TXPacket, String> {
+public class TxCommitProtocolTask<NodeIDType> implements
+        ProtocolTask<NodeIDType, TXPacket.PacketType, String>{
+
+    Transaction transaction;
+
+    public TxCommitProtocolTask(Transaction transaction){
+        this.transaction=transaction;
+    }
 
     @Override
-    public GenericMessagingTask<NodeIDType, ?>[] handleEvent(ProtocolEvent<TXPacket, String> event, ProtocolTask<NodeIDType, TXPacket, String>[] ptasks) {
-        return new GenericMessagingTask[0];
+    public GenericMessagingTask<NodeIDType, ?>[]
+    handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType,TXPacket.PacketType, String>[] ptasks) {
+        if(event instanceof UnlockRequest){
+            ptasks[0]=new TxExecuteProtocolTask<NodeIDType>(this.transaction);
+        }
+        System.out.println("The end");
+        ProtocolExecutor.enqueueCancel(this.getKey());
+        return null;
     }
 
     @Override
     public GenericMessagingTask<NodeIDType, ?>[] start() {
-        return new GenericMessagingTask[0];
+        TreeSet<String> tt = transaction.getLockList();
+        ArrayList<Integer> integers = new ArrayList<Integer>(1);
+
+        int i=0;
+        GenericMessagingTask<NodeIDType, TxLockProtocolTask>[] mtasks = new GenericMessagingTask[tt.size()];
+        for (String t : tt) {
+            Request unlockRequest = new UnlockRequest(t, transaction.getTXID());
+            ArrayList<Request> obj = new ArrayList(1);
+            obj.add(unlockRequest);
+            GenericMessagingTask temp =
+                    new GenericMessagingTask<NodeIDType, TxLockProtocolTask>(integers.toArray(), obj.toArray());
+            mtasks[i]=temp;
+            System.out.println("Begin Unlocking");
+        }
+        return mtasks;
+//        return new GenericMessagingTask[0];
     }
 
+
     @Override
-    public Set<TXPacket> getEventTypes() {
-        return null;
+    public Set<TXPacket.PacketType> getEventTypes()
+    {   Set<TXPacket.PacketType> txPackets=new HashSet<>();
+        txPackets.add(LockRequest.PacketType.UNLOCK_REQUEST);
+        return txPackets;
     }
 
     @Override
     public String getKey() {
-        return null;
+        return transaction.getTXID()+"UnLock";
     }
+
+
 }
