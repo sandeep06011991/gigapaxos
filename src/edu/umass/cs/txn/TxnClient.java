@@ -148,14 +148,8 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> implements 
                         @Override
                         public void handleResponse(Request response) {
                             try {
-                                if (response instanceof CreateServiceName
-                                        && !((CreateServiceName) response)
-                                        .isFailed())
                                     client.testSendBunchOfRequests(name,
                                             numReqs);
-                                else
-                                    System.out.println(this
-                                            + " failed to create name " + name);
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }

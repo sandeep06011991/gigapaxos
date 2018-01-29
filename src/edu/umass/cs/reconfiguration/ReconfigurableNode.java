@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 
+import edu.umass.cs.txn.txpackets.TXPacket;
 import org.json.JSONObject;
 
 import edu.umass.cs.gigapaxos.AbstractPaxosLogger;
@@ -279,6 +280,7 @@ public abstract class ReconfigurableNode<NodeIDType> {
 					app=createApp(args, nodeConfig), nodeConfig, messenger);
 			this.activeReplicas.add(activeReplica);
 			// getPacketTypes includes app's packets
+			activeReplica.getPacketTypes().contains(TXPacket.PacketType.TX_OP_REQUEST);
 			pd.setAppRequestParser(app).register(activeReplica.getPacketTypes(), activeReplica);
 		} else if (nodeConfig.getReconfigurators().contains(id)) {
 			// create reconfigurator

@@ -24,11 +24,10 @@ public class TxCommitProtocolTask<NodeIDType> implements
     @Override
     public GenericMessagingTask<NodeIDType, ?>[]
     handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType,TXPacket.PacketType, String>[] ptasks) {
-        if(event instanceof UnlockRequest){
-            ptasks[0]=new TxExecuteProtocolTask<NodeIDType>(this.transaction);
-        }
         System.out.println("The end");
-        ProtocolExecutor.enqueueCancel(this.getKey());
+        if(event instanceof UnlockRequest){
+            ProtocolExecutor.enqueueCancel(this.getKey());
+        }
         return null;
     }
 
@@ -36,7 +35,6 @@ public class TxCommitProtocolTask<NodeIDType> implements
     public GenericMessagingTask<NodeIDType, ?>[] start() {
         TreeSet<String> tt = transaction.getLockList();
         ArrayList<Integer> integers = new ArrayList<Integer>(1);
-
         int i=0;
         GenericMessagingTask<NodeIDType, TxLockProtocolTask>[] mtasks = new GenericMessagingTask[tt.size()];
         for (String t : tt) {
@@ -62,7 +60,7 @@ public class TxCommitProtocolTask<NodeIDType> implements
 
     @Override
     public String getKey() {
-        return transaction.getTXID()+"UnLock";
+        return transaction.getTXID()+"Unlock";
     }
 
 

@@ -1,7 +1,6 @@
 package edu.umass.cs.txn.txpackets;
 
 import edu.umass.cs.reconfiguration.examples.AppRequest;
-import edu.umass.cs.reconfiguration.examples.noopsimple.NoopApp;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -20,7 +19,7 @@ public class TxOpRequest extends TXPacket implements TxOp {
 		REQUEST,
 	}
 
-	private final Request request;
+	public Request request;
 
 	/**
 	 * @param txid
@@ -68,24 +67,17 @@ public class TxOpRequest extends TXPacket implements TxOp {
 	@Override
 	public JSONObject toJSONObject() throws JSONException {
 		JSONObject jsonObject=super.toJSONObject();
-		if(request instanceof AppRequest){
-			jsonObject.put(Keys.REQUEST.toString(),((AppRequest) request).toJSONObject());
+		if(request !=null){
+			jsonObject.put(Keys.REQUEST.toString(),((AppRequest)request).toJSONObject());
 		}
+
 		return jsonObject;
 	}
 
 	public TxOpRequest(JSONObject jsonObject)throws JSONException{
 		super(jsonObject);
-		String req=jsonObject.getString(Keys.REQUEST.toString());
-		Request temp=null;
-		System.out.println(req);
-		try {
-			temp=NoopApp.staticGetRequest(req);
-		}catch(RequestParseException ex){
-			//This should never be thrown
-			new JSONException("Request Parse Exceptopn");
-		}
-		request=temp;
+		JSONObject jsonObject1=jsonObject.getJSONObject(Keys.REQUEST.toString());
+		request=new AppRequest(jsonObject1);
 	}
 
 	public String getServiceName(){
@@ -96,6 +88,17 @@ public class TxOpRequest extends TXPacket implements TxOp {
 	@Override
 	public Object getKey() {
 		return txid+"Execute";
+	}
+
+	@Override
+	public long getRequestID() {
+		// TODO Auto-generated method stub
+		return Long.parseLong(txid);
+	}
+
+	@Override
+	public boolean needsCoordination() {
+		return true;
 	}
 
 }

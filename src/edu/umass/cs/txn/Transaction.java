@@ -18,6 +18,7 @@ import org.json.JSONObject;
 
 /**
  * @author arun
+ *
  * 
  *         A transaction is an indivisible sequence of operations that satisfy
  *         ACID (atomicity, consistency, isolation, and durability) properties.
@@ -75,8 +76,7 @@ public class Transaction implements TXInterface {
 	 *         Modifying this sequence will violate safety.
 	 */
 	public ArrayList<TxOp> getTxOps() {
-		throw new RuntimeException("Unimplemented");
-		//return this.txops;
+		return this.txOps;
 	}
 
 	/**

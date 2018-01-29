@@ -330,6 +330,7 @@ public class ProtocolExecutor<NodeIDType, EventType, KeyType> {
 					+ task.getKey());
 			e.printStackTrace();
 		}
+
 		remove(task);
 	}
 

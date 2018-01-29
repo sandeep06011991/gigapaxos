@@ -1,5 +1,6 @@
 package edu.umass.cs.txn.protocol;
 
+import com.sun.org.apache.regexp.internal.RE;
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.gigapaxos.interfaces.RequestCallback;
 import edu.umass.cs.nio.AbstractPacketDemultiplexer;
@@ -12,6 +13,7 @@ import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
 import edu.umass.cs.txn.txpackets.TXPacket;
+import edu.umass.cs.txn.txpackets.TxOpRequest;
 import org.json.JSONException;
 
 import javax.xml.soap.Node;
@@ -36,16 +38,20 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
     }
     public void sendObject(Object message){
         try {
-            System.out.print("Attempting send"+message.getClass().toString());
+            System.out.println("Attempting send "+message.getClass().toString());
+            System.out.println("to "+((Request)message).getServiceName() );
+            if(message instanceof TxOpRequest){
+                System.out.println(((TxOpRequest) message).getTxID());
+            }
 
             this.gpClient.sendRequest((Request) message, new RequestCallback() {
                 @Override
 
                 public void handleResponse(Request response) {
                     if (response instanceof TXPacket) {
-                           System.out.println("TXPacket Received");
+                           System.out.println("Recieved a new TxPacket ");
+                           System.out.println(((TXPacket)response).getKey());
                            TxMessenger.this.pe.handleEvent((TXPacket)response);
-                           System.out.println("TXPacket Processed");
                     } else {
                         throw new RuntimeException("Expected TxPacket");
                     }
@@ -58,7 +64,6 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
     @Override
     public void send(GenericMessagingTask<NodeIDType, ?> mtask) throws IOException, JSONException {
         for(int i=0;i<mtask.msgs.length;i++){
-            System.out.println("Attempting Send");
             sendObject(mtask.msgs[i]);
         }
     }

@@ -355,6 +355,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		try{
 			JSONObject jsonObject=new  JSONObject(str);
 			TXPacket.PacketType packetId=TXPacket.PacketType.intToType.get(jsonObject.getInt("type"));
+			System.out.println("Recieved new packet"+ str);
 			if(packetId==TXPacket.PacketType.TX_INIT){
 				TXInitRequest txInitRequest= new TXInitRequest(jsonObject);
 //				txInitRequest.transaction.setEntryServer(header.sndr);
@@ -364,12 +365,22 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 				LockRequest lockRequest=new LockRequest(jsonObject);
 				return lockRequest;
 			}
+			if(packetId==TXPacket.PacketType.TX_OP_REQUEST){
+				TxOpRequest txOpRequest=new TxOpRequest(jsonObject);
+				return  txOpRequest;
+			}
+			if(packetId==TXPacket.PacketType.UNLOCK_REQUEST){
+				System.out.println("This is an UnlockRequest");
+				UnlockRequest unlockRequest=new UnlockRequest(jsonObject);
+				return unlockRequest;
+			}
 
 
 		}catch(Exception e){
 			e.printStackTrace();
 			//silent kill
 		}
+
 		return this.app.getRequest(str);
 //
 	}
@@ -381,12 +392,14 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 //		as a default method
 		try{
 			String str=new String(bytes, NIOHeader.CHARSET);
-			Request request=getRequest(str);
+			System.out.println(str);
+			Request request=getRequestNew(str);
 			if(request instanceof TXInitRequest){
 				((TXInitRequest) request).transaction.entryServer=header.sndr;
 				((TXInitRequest) request).transaction.nodeId=(String)getMyID();
 			}
 			return request;
+
 		}catch(Exception e){
 			e.printStackTrace();
 			//silent kill
@@ -404,6 +417,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 
 	@Override
 	public boolean preExecuted(Request request) {
+		System.out.println(request.getClass().toString());
 		if(request==null){return false;}
 		if(request instanceof TXInitRequest){
 			TXInitRequest trx=(TXInitRequest)request;
@@ -459,9 +473,10 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		}
 
 		if(request instanceof TxOpRequest){
+			System.out.println("Sending out response");
 			TxOpRequest txOp=(TxOpRequest) request;
-			txOp.response=txOp;
-			txOp.failed=false;
+			txOp.response=new TxOpRequest(txOp.getTXID(),txOp.request);txOp.failed=false;
+			System.out.println(txOp.getTxID());
 			return true;
 		}
 

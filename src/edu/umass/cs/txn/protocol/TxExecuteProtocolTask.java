@@ -28,7 +28,7 @@ public class TxExecuteProtocolTask<NodeIDType>
     public GenericMessagingTask<NodeIDType, ?>[]
     handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType,TXPacket.PacketType, String>[] ptasks) {
         if(event instanceof TxOpRequest){
-            ptasks[0]=new TxExecuteProtocolTask<NodeIDType>(this.transaction);
+            ptasks[0]=new TxCommitProtocolTask<>(this.transaction);
         }
         ProtocolExecutor.enqueueCancel(this.getKey());
         System.out.println("Execute Phase Complete");
@@ -38,13 +38,20 @@ public class TxExecuteProtocolTask<NodeIDType>
 
     @Override
     public GenericMessagingTask<NodeIDType, ?>[] start() {
+        System.out.println("Execute initiated");
         ArrayList<TxOp> txOps=transaction.getTxOps();
         TxOp txOp=txOps.get(0);
         TxOpRequest txOpRequest=new TxOpRequest(transaction.getTXID(),txOp);
         ArrayList<TxOpRequest> send=new ArrayList<>();
-        send.add(txOpRequest);
-        GenericMessagingTask temp = new GenericMessagingTask<NodeIDType, TxLockProtocolTask>((Object[] )null, send.toArray());
-        return temp.toArray();
+//        This clearly a error
+        send.add((TxOpRequest) txOp);
+        ((TxOpRequest) txOp).txid=transaction.getTXID();
+
+
+        GenericMessagingTask temp = new GenericMessagingTask<NodeIDType,TxExecuteProtocolTask>(send.toArray(), send.toArray());
+        GenericMessagingTask<NodeIDType, TxLockProtocolTask>[] mtasks = new GenericMessagingTask[1];
+        mtasks[0]=temp;
+        return mtasks;
     }
 
     @Override

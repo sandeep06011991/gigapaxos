@@ -1,5 +1,6 @@
 package edu.umass.cs.txn.txpackets;
 
+import edu.umass.cs.txn.protocol.TxMessenger;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -17,10 +18,9 @@ public class UnlockRequest extends TXPacket {
 	private final String txID;
 
 	public UnlockRequest(String lockID, String txID) {
-		super(TXPacket.PacketType.UNLOCK_REQUEST, null);
+		super(TXPacket.PacketType.UNLOCK_REQUEST, txID);
 		this.lockID = lockID;
 		this.txID = txID;
-
 	}
 
 	public UnlockRequest(JSONObject json) throws JSONException {
@@ -31,6 +31,13 @@ public class UnlockRequest extends TXPacket {
 
 	public String getTXID() {
 		return this.txID;
+	}
+
+	public JSONObject toJSONObject() throws JSONException{
+		JSONObject jsonObject=super.toJSONObject();
+		jsonObject.put(Keys.UNLOCKID.toString(),this.lockID);
+		return jsonObject;
+
 	}
 
 
