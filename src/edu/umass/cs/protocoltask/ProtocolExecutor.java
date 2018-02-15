@@ -400,6 +400,10 @@ public class ProtocolExecutor<NodeIDType, EventType, KeyType> {
 		}
 
 		if (task == null) {
+			for(KeyType some:this.protocolTasks.keySet()){
+				System.out.println(some);
+			}
+			 System.out.println("Task with key not found"+event.getKey());
 			return false;
 		}
 		@SuppressWarnings("unchecked")

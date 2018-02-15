@@ -1,20 +1,50 @@
 Question
-1) To build in 4:30 -> Complete
-Protocol Task --> Done
-Rewire Responses --> How are they received ??
-TxOpRequest is not being recieved why ??
-Create LockReponse System
-Build Locker and lock management system
 
-Draw UML diagram and one Vanilla test case
+Features to build.
+Dont implement logic yet.
+Just write interfaces and code it up later. I know enough infrastructure to do this.
+
+Coding Marathon:
+Fix:
+Test 1:
+1. Primary Completes the (dummy) transaction but secondary is aware.
+11. TxResult for TxOpRequest to be built
 
 
+2. Secondary can recover the transaction but transaction is still dummy.
+ (FINISH TESTING HERE)
+
+3. Rewire recieve and response from a client.
+3. Transaction Actually does something.
+4. Abort and rollback the transaction.
 
 
-c. What does the handleMethod take as an input
+1. Fill up with Document after each level.
+
+
+######################## WAIT ###########################
+d. How would responses be recieved by clients
+e. Rebuild Secondary to take over primary with co-ordination.
+a. Transaction ID is being repeated.(fixed)
+b. Responses are messy, create a single packet interface(done)
+
+
+1. The transaction should be sent and received at the entry server.
+2. The entry server pushes it into the transaction module after co-ordination.
+3. Sends a reply of Ok to the Replica initiating the request.
+4. Fix Packet ID key architecture
+5. Fix Packet type Response architecture
+6. Write Code for Secondary
+7. Write atleast one test
+
+
+#### Later priorities
+1. Create new packet types to handle message responses for client
+
 
 a.  Completely understand ProtocolExecutor ??
 ProtocolPacket
+
 ProtocolTask
 MessageTask
 

@@ -38,19 +38,13 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
     }
     public void sendObject(Object message){
         try {
-            System.out.println("Attempting send "+message.getClass().toString());
-            System.out.println("to "+((Request)message).getServiceName() );
-            if(message instanceof TxOpRequest){
-                System.out.println(((TxOpRequest) message).getTxID());
-            }
-
             this.gpClient.sendRequest((Request) message, new RequestCallback() {
                 @Override
 
                 public void handleResponse(Request response) {
                     if (response instanceof TXPacket) {
-                           System.out.println("Recieved a new TxPacket ");
-                           System.out.println(((TXPacket)response).getKey());
+//                           System.out.println("Recieved a new TxPacket ");
+//                           System.out.println(((TXPacket)response).getKey());
                            TxMessenger.this.pe.handleEvent((TXPacket)response);
                     } else {
                         throw new RuntimeException("Expected TxPacket");
@@ -58,6 +52,7 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
                 }
             });
         }catch(IOException ex){
+            ex.printStackTrace();
             System.out.println("Exception");
         }
     }

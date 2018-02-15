@@ -3,7 +3,7 @@ import edu.umass.cs.txn.Transaction;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class TXInitRequest<NodeIDType> extends TXPacket{
+public class TXInitRequest extends TXPacket{
     public Transaction transaction;
 
 
@@ -28,5 +28,10 @@ public class TXInitRequest<NodeIDType> extends TXPacket{
         JSONObject jsonObject=super.toJSONObject();
         jsonObject.put("transaction",transaction.toJSONObject());
         return jsonObject;
+    }
+
+    @Override
+    public Object getKey() {
+        return txid;
     }
 }

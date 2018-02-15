@@ -11,6 +11,8 @@ import edu.umass.cs.reconfiguration.interfaces.ReplicableRequest;
 import edu.umass.cs.txn.exceptions.ResponseCode;
 import edu.umass.cs.utils.IntegerPacketTypeMap;
 
+import java.util.Random;
+
 /**
  * @author arun
  *
@@ -57,7 +59,11 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 
 		TX_INIT(257),
 
-		LOCK_OK(258)
+		LOCK_OK(258),
+
+		RESULT(259),
+
+		TX_TAKEOVER(260)
 		;
 
 		private final int number;
@@ -83,6 +89,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	public boolean failed=false;
 	private ResponseCode code = null;
 	private IntegerPacketType packetType;
+	long requestId;
 	private static enum Keys {
 		TXID, LOCKID, INITIATOR
 	}
@@ -94,6 +101,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	public TXPacket(IntegerPacketType t, String txid) {
 		super(t);
 		this.txid = txid;
+		this.requestId=new Random().nextLong();
 	}
 
 
@@ -105,7 +113,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 		super(json);
 		this.txid = json.getString(Keys.TXID.toString());
 		this.failed=json.getBoolean("failed");
-
+		this.requestId=json.getLong("requestId");
 	}
 
 	@Override
@@ -123,7 +131,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	@Override
 	public long getRequestID() {
 		// TODO Auto-generated method stub
-		return 0;
+		return requestId;
 	}
 
 	@Override
@@ -185,6 +193,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 		JSONObject jsonObject=super.toJSONObject();
 		jsonObject.put(Keys.TXID.toString(),txid);
 		jsonObject.put("failed",this.failed);
+		jsonObject.put("requestId",this.requestId);
 		return jsonObject;
 	}
 
@@ -205,11 +214,6 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	@Override
 	public void setKey(Object key) {
 		throw new RuntimeException("set Key event should never be called");
-	}
-
-	@Override
-	public Object getKey() {
-		return txid;
 	}
 
 }

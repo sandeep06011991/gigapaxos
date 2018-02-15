@@ -60,17 +60,17 @@ public class TxCallback implements ExecutedCallback {
 	 * @param participant
 	 * @throws IOException
 	 */
-	public void txTryFinish(Transaction tx, String participant)
-			throws IOException {
-		TxStateRequest response = (TxStateRequest) this.gpClient
-				.sendRequest(new TxStateRequest(tx.getTxGroupName()));
-		assert (!response.isFailed());
-		if (response.getState() == TxStateRequest.State.ABORTED)
-			rollback(tx, participant);
-
-		if (response.getState() == TxStateRequest.State.COMMITTED)
-			unlock(tx, participant);
-	}
+//	public void txTryFinish(Transaction tx, String participant)
+//			throws IOException {
+//		TxStateRequest response = (TxStateRequest) this.gpClient
+//				.sendRequest(new TxStateRequest(tx.getTxGroupName()));
+//		assert (!response.isFailed());
+//		if (response.getState() == TxStateRequest.State.ABORTED)
+//			rollback(tx, participant);
+//
+//		if (response.getState() == TxStateRequest.State.COMMITTED)
+//			unlock(tx, participant);
+//	}
 
 	private void rollback(Transaction tx, String participantGroup)
 			throws IOException {

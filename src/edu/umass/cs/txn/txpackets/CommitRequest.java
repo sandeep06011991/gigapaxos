@@ -26,4 +26,9 @@ public class CommitRequest extends TXPacket {
 		super(json);
 		// TODO Auto-generated constructor stub
 	}
+
+	@Override
+	public Object getKey() {
+		return null;
+	}
 }

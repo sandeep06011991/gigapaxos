@@ -12,19 +12,17 @@ import edu.umass.cs.txn.txpackets.UnlockRequest;
 
 import java.util.*;
 
-public class TxCommitProtocolTask<NodeIDType> implements
-        ProtocolTask<NodeIDType, TXPacket.PacketType, String>{
+public class TxCommitProtocolTask<NodeIDType> extends
+        TransactionProtocolTask<NodeIDType>{
 
-    Transaction transaction;
-
-    public TxCommitProtocolTask(Transaction transaction){
-        this.transaction=transaction;
+    public TxCommitProtocolTask(Transaction t){
+        super(t);
     }
 
     @Override
     public GenericMessagingTask<NodeIDType, ?>[]
     handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType,TXPacket.PacketType, String>[] ptasks) {
-        System.out.println("The end");
+        System.out.println("YIPPEE COMMIT PROTOCOL COMPLETE");
         if(event instanceof UnlockRequest){
             ProtocolExecutor.enqueueCancel(this.getKey());
         }
@@ -43,7 +41,9 @@ public class TxCommitProtocolTask<NodeIDType> implements
             obj.add(unlockRequest);
             GenericMessagingTask temp =
                     new GenericMessagingTask<NodeIDType, TxLockProtocolTask>(integers.toArray(), obj.toArray());
+            System.out.println(unlockRequest.getServiceName());
             mtasks[i]=temp;
+            i++;
             System.out.println("Begin Unlocking");
         }
         return mtasks;
@@ -55,6 +55,7 @@ public class TxCommitProtocolTask<NodeIDType> implements
     public Set<TXPacket.PacketType> getEventTypes()
     {   Set<TXPacket.PacketType> txPackets=new HashSet<>();
         txPackets.add(LockRequest.PacketType.UNLOCK_REQUEST);
+        txPackets.add(TXPacket.PacketType.RESULT);
         return txPackets;
     }
 
@@ -62,6 +63,5 @@ public class TxCommitProtocolTask<NodeIDType> implements
     public String getKey() {
         return transaction.getTXID()+"Unlock";
     }
-
 
 }

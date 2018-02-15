@@ -9,6 +9,8 @@ import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
 import edu.umass.cs.txn.interfaces.TxOp;
 
+import java.util.Random;
+
 /**
  * @author arun
  *
@@ -21,6 +23,8 @@ public class TxOpRequest extends TXPacket implements TxOp {
 
 	public Request request;
 
+	public long requestId;
+
 	/**
 	 * @param txid
 	 * @param request
@@ -28,6 +32,8 @@ public class TxOpRequest extends TXPacket implements TxOp {
 	public TxOpRequest(String txid, Request request) {
 		super(TXPacket.PacketType.TX_OP_REQUEST, txid);
 		this.request = request;
+		requestId = new Random().nextLong();
+
 	}
 
 	/**
@@ -42,6 +48,7 @@ public class TxOpRequest extends TXPacket implements TxOp {
 	public TxOpRequest(JSONObject json, AppRequestParser parser)
 			throws JSONException, RequestParseException {
 		super(json);
+		requestId=json.getLong("reqId");
 		this.request = parser
 				.getRequest(json.getString(Keys.REQUEST.toString()));
 	}
@@ -70,7 +77,7 @@ public class TxOpRequest extends TXPacket implements TxOp {
 		if(request !=null){
 			jsonObject.put(Keys.REQUEST.toString(),((AppRequest)request).toJSONObject());
 		}
-
+		jsonObject.put("reqId",requestId);
 		return jsonObject;
 	}
 
@@ -78,6 +85,7 @@ public class TxOpRequest extends TXPacket implements TxOp {
 		super(jsonObject);
 		JSONObject jsonObject1=jsonObject.getJSONObject(Keys.REQUEST.toString());
 		request=new AppRequest(jsonObject1);
+		requestId=jsonObject.getLong("reqId");
 	}
 
 	public String getServiceName(){
@@ -93,7 +101,7 @@ public class TxOpRequest extends TXPacket implements TxOp {
 	@Override
 	public long getRequestID() {
 		// TODO Auto-generated method stub
-		return Long.parseLong(txid);
+		return this.requestId ;
 	}
 
 	@Override

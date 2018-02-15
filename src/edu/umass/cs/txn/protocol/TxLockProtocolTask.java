@@ -7,45 +7,56 @@ import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
 import edu.umass.cs.txn.Transaction;
 import edu.umass.cs.txn.txpackets.LockRequest;
-import edu.umass.cs.txn.txpackets.TXInitRequest;
 import edu.umass.cs.txn.txpackets.TXPacket;
+import edu.umass.cs.txn.txpackets.TXResult;
 
 import java.util.*;
 
-public class TxLockProtocolTask<NodeIDType> implements
-        ProtocolTask<NodeIDType, TXPacket.PacketType, String>{
+public class TxLockProtocolTask<NodeIDType> extends
+        TransactionProtocolTask<NodeIDType>{
 
-    Transaction transaction;
+    TreeSet<String> awaitingLock=null;
 
     public TxLockProtocolTask(Transaction transaction){
-        this.transaction=transaction;
+        super(transaction);
     }
 
     @Override
     public GenericMessagingTask<NodeIDType, ?>[]
     handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType,TXPacket.PacketType, String>[] ptasks) {
-        if(event instanceof LockRequest){
+        //Fix:
+        if(event instanceof TXResult){
+            TXResult txResult=(TXResult)event;
+            String opId=txResult.getOpId();
+            if(awaitingLock.remove(opId)){
+                System.out.println("Lock "+opId +" "+txResult.isFailed());
+            }
+        }
+        if(awaitingLock.isEmpty()){
+            System.out.println("All locks recieved");
+            ProtocolExecutor.enqueueCancel(this.getKey());
             ptasks[0]=new TxExecuteProtocolTask<NodeIDType>(this.transaction);
         }
-        ProtocolExecutor.enqueueCancel(this.getKey());
-        System.out.println("Lock Phase Complete");
         return null;
     }
 
     @Override
     public GenericMessagingTask<NodeIDType, TxLockProtocolTask>[] start() {
-
-        TreeSet<String> tt = transaction.getLockList();
+        if(awaitingLock==null){
+            awaitingLock = transaction.getLockList();
+        }
         ArrayList<Integer> integers = new ArrayList<Integer>(1);
-        GenericMessagingTask<NodeIDType, TxLockProtocolTask>[] mtasks = new GenericMessagingTask[tt.size()];
+        GenericMessagingTask<NodeIDType, TxLockProtocolTask>[] mtasks = new GenericMessagingTask[awaitingLock.size()];
         int i=0;
-        for (String t : tt) {
+        for (String t : awaitingLock) {
+//          Low Priority: cleaner method exists
             Request lockRequest = new LockRequest(t, transaction);
             ArrayList<Request> obj = new ArrayList(1);
             obj.add(lockRequest);
-            GenericMessagingTask temp =
-                    new GenericMessagingTask<NodeIDType, TxLockProtocolTask>(integers.toArray(), obj.toArray());
+            GenericMessagingTask<NodeIDType, TxLockProtocolTask> temp =
+                    new GenericMessagingTask(integers.toArray(), obj.toArray());
             mtasks[i]=temp;
+            i++;
             System.out.println("Begin Locking");
             }
         return mtasks;
@@ -56,6 +67,7 @@ public class TxLockProtocolTask<NodeIDType> implements
     public Set<TXPacket.PacketType> getEventTypes()
     {   Set<TXPacket.PacketType> txPackets=new HashSet<>();
         txPackets.add(LockRequest.PacketType.LOCK_REQUEST);
+        txPackets.add(TXPacket.PacketType.RESULT);
         return txPackets;
     }
 

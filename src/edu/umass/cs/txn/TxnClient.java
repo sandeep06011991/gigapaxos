@@ -54,43 +54,26 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> implements 
                 for (int i = 0; i < numRequests; i++) {
                     long reqInitime = System.currentTimeMillis();
                     try {
-                        ArrayList<TxOp> txOps=new ArrayList<>();
-                        txOps.add(new TxOpRequest("0",new AppRequest(name,
+                        InetSocketAddress entryServer=new InetSocketAddress("127.0.0.1",2100);
+                        ArrayList<Request> requests=new ArrayList<>();
+                        requests.add(new AppRequest("name0",
                                 "request_value" + i,
                                 AppRequest.PacketType.DEFAULT_APP_REQUEST,
-                                false)));
-                        Transaction transaction = new Transaction(new InetSocketAddress(100), txOps);
-                        TXInitRequest txInitRequest = new TXInitRequest(transaction);
+                                false));
+                        requests.add(new AppRequest("name1",
+                                "request_value" + i+1,
+                                AppRequest.PacketType.DEFAULT_APP_REQUEST,
+                                false));
+                        Transaction transaction=new Transaction(entryServer,requests);
+                        TXInitRequest txInitRequest=new TXInitRequest(transaction);
                         //Convert everything to JSON
-                        sendRequest(txInitRequest,new InetSocketAddress("127.0.0.1",2100), new RequestCallback() {
+                        sendRequest(txInitRequest,entryServer, new RequestCallback() {
                             @Override
                             public void handleResponse(Request response) {
                                 System.out.print("Delivered");
                             }
 
                         });
-
-//                        sendRequest(ReplicableClientRequest.wrap(new AppRequest(name,
-//                                "request_value" + i,
-//                                AppRequest.PacketType.DEFAULT_APP_REQUEST,
-//                                false)), new RequestCallback() {
-//
-//                            @Override
-//                            public void handleResponse(Request response) {
-//                                if (response instanceof ActiveReplicaError)
-//                                {   System.out.print(response.getSummary());
-//                                    System.out.println("Some error");
-//                                    return;
-//                                }
-//                                // else
-//                                System.out.println("Received response: "
-//                                        + response
-//                                        + "  ["
-//                                        + (System.currentTimeMillis() - reqInitime)
-//                                        + "ms]");
-//
-//                            }
-//                        });
                     }catch (IOException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
@@ -137,11 +120,17 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> implements 
         final int numReqs = 1;
         String namePrefix = "Service_name_txn";
         String initialState = "some_default_initial_state";
-
+        try {
+            client.sendRequest(new CreateServiceName("name0", "value0"));
+            client.sendRequest(new CreateServiceName("name1","value1"));
+        }catch(Exception ex){
+            System.out.println("Unable to create");
+        }
         for (int i = 0; i < numNames; i++) {
             final String name = namePrefix;
+//            client.testSendBunchOfRequests(name,1);
 //                    + ((int) (Math.random() * Integer.MAX_VALUE));
-            System.out.println("Creating name " + name);
+//            System.out.println("Creating name " + name);
             client.sendRequest(new CreateServiceName(name, initialState),
                     new RequestCallback() {
 

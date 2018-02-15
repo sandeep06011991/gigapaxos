@@ -5,6 +5,8 @@ import org.json.JSONObject;
 
 import edu.umass.cs.txn.Transaction;
 
+import java.util.Random;
+
 /**
  * @author arun
  *
@@ -76,5 +78,6 @@ public class LockRequest extends TXPacket {
 	public Object getKey() {
 		return txid+"Lock";
 	}
+
 
 }

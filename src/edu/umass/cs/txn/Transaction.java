@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.TreeSet;
 
 import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
+import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.ClientReconfigurationPacket;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.DeleteServiceName;
 import edu.umass.cs.txn.interfaces.TXInterface;
@@ -51,10 +52,13 @@ public class Transaction implements TXInterface {
 	/**
 	 * @param entryServer
 	 */
-	public Transaction(InetSocketAddress entryServer ,ArrayList<TxOp> txOps) {
+	public Transaction(InetSocketAddress entryServer ,ArrayList<Request> requests) {
 		this.txn = getNewTxid(entryServer);
 		this.entryServer = entryServer;
-		this.txOps=txOps;
+		txOps=new ArrayList<>();
+		for(Request request:requests){
+			txOps.add(new TxOpRequest(Long.toString(this.txn),request));
+		}
 	}
 
 	/**
@@ -156,7 +160,7 @@ public class Transaction implements TXInterface {
 	}
 
 	public Transaction(JSONObject jsonObject) throws JSONException{
-		txn=jsonObject.getInt("txId");
+		txn=jsonObject.getLong("txId");
 		JSONArray j_txops=jsonObject.getJSONArray("txOps");
 		txOps=new ArrayList<>();
 		for(int i=0;i<j_txops.length();i++){
