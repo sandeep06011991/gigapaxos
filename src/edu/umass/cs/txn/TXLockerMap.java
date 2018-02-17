@@ -33,15 +33,6 @@ public class TXLockerMap implements TXLocker {
 		return false;
 	}
 
-	/**
-	 * Acquires the locks in the order specified by {@code lockIDs}.
-	 * 
-	 * @param lockIDs
-	 * @throws TXException
-	 */
-	public void lock(String[] lockIDs) throws TXException {
-		throw new RuntimeException("Unimplemented");
-	}
 
 	/**
 	 * A blocking call that returns upon successfully release {@code lockID} or

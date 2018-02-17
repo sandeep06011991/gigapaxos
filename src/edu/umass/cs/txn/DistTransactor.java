@@ -220,7 +220,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		/* best effort here is okay because one or more participant groups may
 		 * be unavailable, so the onus is on them to complete the rollback when
 		 * they are available again. */
-		TXUtils.tryFinishAsyncTasks(this.gpClient, rollbacks);
+//		TXUtils.tryFinishAsyncTasks(this.gpClient, rollbacks);
 	}
 
 	private boolean commit(Transaction tx) throws TXException, IOException {
@@ -263,10 +263,10 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			unlocks.add(new UnlockRequest(lockID,
 			/* The client ID is used as the ID of the initiator. */
 			gpClient.toString()));
-		Request[] responses = TXUtils.tryFinishAsyncTasks(gpClient, unlocks);
-		for (Request response : responses)
-			if (((UnlockRequest) response).isFailed())
-				return false;
+//		Request[] responses = TXUtils.tryFinishAsyncTasks(gpClient, unlocks);
+//		for (Request response : responses)
+//			if (((UnlockRequest) response).isFailed())
+//				return false;
 		return true;
 	}
 
@@ -336,15 +336,6 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 				.sendRequest(new RequestActiveReplicas(Config
 						.getGlobalString(RC.BROADCAST_NAME)))).getActives();
 	}
-
-	protected boolean isLocked(String name) {
-		throw new RuntimeException("Unimplemented");
-	}
-
-	protected void enqueue(Request request, boolean noReplyToClient) {
-		throw new RuntimeException("Unimplemented");
-	}
-
 
 	public Request getRequestNew(String str) throws RequestParseException{
 		//Code similar to the one below, clean this mess

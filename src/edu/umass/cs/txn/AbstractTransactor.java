@@ -15,6 +15,7 @@ import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
 import edu.umass.cs.nio.nioutils.NIOHeader;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
+import edu.umass.cs.reconfiguration.PaxosReplicaCoordinator;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
 import edu.umass.cs.reconfiguration.interfaces.ReconfigurableRequest;
@@ -30,10 +31,15 @@ import edu.umass.cs.utils.GCConcurrentHashMap;
 
 /**
  * @author arun
- *
+ * Deleted:
+ * A lot of code was doing the same as is done in super class
+ * this.coordinator was doing what this.app does in parent class
+ * Not required as app=coordinator
  * @param <NodeIDType>
  */
-public abstract class AbstractTransactor<NodeIDType> extends
+
+
+public  abstract class AbstractTransactor<NodeIDType> extends
 		AbstractReplicaCoordinator<NodeIDType> implements ReconfiguratorCallback {
 
 	private final AbstractReplicaCoordinator<NodeIDType> coordinator;
@@ -41,6 +47,8 @@ public abstract class AbstractTransactor<NodeIDType> extends
 	protected AbstractTransactor(
 			AbstractReplicaCoordinator<NodeIDType> coordinator) {
 		super(coordinator);
+		System.out.println("Class of Coordinator"+coordinator.getClass());
+		assert (coordinator instanceof PaxosReplicaCoordinator);
 		this.coordinator = coordinator;
 		this.coordinator.setCallback(this);
 		AppRequestParser appRequestParser=new AppRequestParser() {
@@ -65,15 +73,6 @@ public abstract class AbstractTransactor<NodeIDType> extends
 
 	}
 
-	private static final IntegerPacketType[] txTypes = {
-			TXPacket.PacketType.ABORT_REQUEST,
-			TXPacket.PacketType.COMMIT_REQUEST,
-			TXPacket.PacketType.LOCK_REQUEST,
-			TXPacket.PacketType.TX_OP_REQUEST,
-
-			TXPacket.PacketType.TX_STATE_REQUEST,
-			TXPacket.PacketType.UNLOCK_REQUEST,
-			TXPacket.PacketType.TX_INIT};
 
 	private static final boolean ENABLE_TRANSACTIONS = Config
 			.getGlobalBoolean(RC.ENABLE_TRANSACTIONS);
@@ -84,6 +83,9 @@ public abstract class AbstractTransactor<NodeIDType> extends
 	 * operations to take arbitrarily long. So should we. */
 	private static final long DEFAULT_TX_TIMEOUT = Long.MAX_VALUE;
 	private static final long MAX_QUEUED_REQUESTS = 8000;
+
+//	/* FIXME: Why would we need call backs ?? */
+	/* Isnt rigging the  pre-executed function not enough */
 	private GCConcurrentHashMap<Request, ExecutedCallback> callbacks = new GCConcurrentHashMap<Request, ExecutedCallback>(
 			DEFAULT_TX_TIMEOUT);
 	/* ********* Start of coordinator-related methods *************** */
@@ -117,149 +119,70 @@ public abstract class AbstractTransactor<NodeIDType> extends
 		return false;
 	}
 
+
+//	Rigging methods to underlying coordinator
+//	AbstractReplicaCoordinator takes in coordinator but stores the app
+//	directly calling the parent class for the methods below imply
+//	that the paxos cordinator is by passed
 	@Override
-	public boolean execute(Request request, boolean noReplyToClient) {
-		if (!ENABLE_TRANSACTIONS || !isLocked(request.getServiceName()) || 
-				(request instanceof TxOpRequest && this.isOngoing(((TxOpRequest)request).getTxID())))
-			return this.coordinator.execute(request, noReplyToClient,
-					this.callbacks.remove(request.getServiceName()));
-		enqueue(request, noReplyToClient);
-		/* Need to return true here no matter what, otherwise paxos will be
-		 * stuck. */
-		return true;
-	}
-	/**
-	 * @param txID
-	 * @return True if txID is an ongoing transaction.
-	 */
-	private boolean isOngoing(String txID) {
-		// TODO Auto-generated method stub
-		return false;
+	/*Intercept execute requests here*/
+
+	public boolean execute(Request request, boolean noReplyToClient){
+		return this.coordinator.execute(request,noReplyToClient);
 	}
 
-	private TXInterface getTransaction(String serviceName) {
-		// TODO Auto-generated method stub
-		return null;
+
+	public AbstractReplicaCoordinator<NodeIDType> getCoordinator() {
+		return coordinator;
 	}
 
-	protected abstract void enqueue(Request request, boolean noReplyToClient);
-
-	protected abstract boolean isLocked(String serviceName);
-
-	@Override
-	public boolean execute(Request request) {
-		return this.execute(request, false);
+	public  boolean createReplicaGroup(String serviceName, int epoch,
+											   String state, Set<NodeIDType> nodes){
+		return this.coordinator.createReplicaGroup(serviceName,epoch,state,nodes);
 	}
 
-	@Override
-	public boolean createReplicaGroup(String serviceName, int epoch,
-			String state, Set<NodeIDType> nodes) {
-		return this.coordinator.createReplicaGroup(serviceName, epoch, state,
-				nodes);
-	}
 
 	@Override
 	public boolean deleteReplicaGroup(String serviceName, int epoch) {
-		return this.coordinator.deleteReplicaGroup(serviceName, epoch);
+		return this.coordinator.deleteReplicaGroup(serviceName,epoch);
 	}
 
 	@Override
-	public Set<NodeIDType> getReplicaGroup(String serviceName) {
-		return this.coordinator.getReplicaGroup(serviceName);
+	public boolean execute(Request request) {
+		return this.coordinator.execute(request);
 	}
 
-	/* ********* End of coordinator methods *************** */
-
-	/* ********* Start of Repliconfigurable methods *************** */
-
-	@Override
-	public ReconfigurableRequest getStopRequest(String name, int epoch) {
-		return this.coordinator.getStopRequest(name, epoch);
+	public ReconfigurableRequest getStopRequest(String name, int epoch){
+		return  this.coordinator.getStopRequest(name,epoch);
 	}
 
-	@Override
-	public String getFinalState(String name, int epoch) {
-		return this.coordinator.getFinalState(name, epoch);
+	public String getFinalState(String name, int epoch){
+		return this.coordinator.getFinalState(name,epoch);
 	}
 
-	@Override
-	public void putInitialState(String name, int epoch, String state) {
-		this.coordinator.putInitialState(name, epoch, state);
+	public void putInitialState(String name, int epoch, String state){
+		this.coordinator.putInitialState(name,epoch,state);
 	}
 
-	@Override
-	public boolean deleteFinalState(String name, int epoch) {
-		return this.coordinator.deleteFinalState(name, epoch);
-	}
 
 	@Override
 	public Integer getEpoch(String name) {
 		return this.coordinator.getEpoch(name);
 	}
 
-	@Override
-	public String checkpoint(String name) {
-		return this.coordinator.checkpoint(name);
-	}
 
 	@Override
-	public boolean restore(String name, String state) {
-		TXInterface request = this.decodeTX(state);
-		if (request == null)
-			return super.restore(name,state);
-//			return this.coordinator.restore(name, state);
-		else
-			return this.processTX((TXInterface) request);
+	public Set<NodeIDType> getReplicaGroup(String serviceName) {
+		return this.coordinator.getReplicaGroup(serviceName);
 	}
 
-	private boolean processTX(TXInterface request) {
-		Set<NodeIDType> group = this.getReplicaGroup(request.getTXID());
-		SortedSet<String> sorted = new TreeSet<String>();
-		for (NodeIDType node : group)
-			sorted.add(node.toString());
-		if (this.getMyID().toString().equals(sorted.iterator().next())) {
-			// if first in list, actually do stuff
-		}
-		// else secondary
-		return spawnWaitPrimaryTask(request);
-	}
+	public abstract Request getRequestNew(String str) throws RequestParseException;
 
-	private boolean spawnWaitPrimaryTask(TXInterface request) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	private TXInterface decodeTX(String state) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	/* ********* End of Repliconfigurable methods *************** */
-
-	public AbstractReplicaCoordinator<NodeIDType> getCoordinator() {
-		return coordinator;
-	}
-
-
+	public abstract Request getRequestNew(byte[] bytes, NIOHeader header) throws RequestParseException;
 
 	@Override
-	public boolean preRestore(String name, String state) {
-		throw new RuntimeException("unexecpeted");
+	public void executed(Request request, boolean handled) {
+//		Uselessly call
+		System.out.println("Nothing much done");
 	}
-
-	@Override
-	public String preCheckpoint(String name) {
-		throw new RuntimeException("unexecpeted");
-	}
-
-	@Override
-	public void executed(Request request, boolean handled){
-
-	}
-
-	public Request getRequestNew(String str) throws RequestParseException{throw new RuntimeException("Override this");}
-
-	public  Request getRequestNew(byte[] bytes, NIOHeader header)
-			throws RequestParseException{
-		throw new RuntimeException("Override in child class");}
 }

@@ -58,11 +58,25 @@ c. Where does the protocol executor wait for messages ??
 At handleMessage
 On recieve can either spawn another protocolTask or stay if it is not removed or respond with messages
 
+#### Code clean up
 
+AbstractTransactor.java (CURENT) *********** DONE
+Transaction.java ----------Move this into TXPacket
+DistTransactor.java
+TxCallback.java *************************** DONE
+TXUtils.java ******************************DONE
+event_action_protocol.txt
+TXLockerMap.java **************************DONE
 
-Objective 1:
+txn/exceptions:
+ResponseCode.java  TXException.java
 
-The primary cleanly executes the transaction without aborting.
-This goes through all the 3 phases of lock, execute and abort.
+txn/interfaces:
+Transactor.java  TXInterface.java  TXLocker.java  TxOp.java  TXRequest.java
 
-Talk to arun about flexible replication
+txn/testing:
+NoopAppTX.java
+
+txn/txpackets:
+AbortRequest.java   LockRequest.java  TXPacket.java        UnlockRequest.java
+CommitRequest.java  TxOpRequest.java  TxStateRequest.java
