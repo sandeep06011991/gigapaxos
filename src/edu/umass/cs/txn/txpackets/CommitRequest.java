@@ -13,13 +13,10 @@ import edu.umass.cs.txn.Transaction;
  *         groups.
  */
 public class CommitRequest extends TXPacket {
-	public CommitRequest(Transaction tx) {
-		this(null, tx);
-	}
 
-	public CommitRequest(String initiator, Transaction tx) {
-		super(TXPacket.PacketType.ABORT_REQUEST, initiator);
-		// TODO Auto-generated constructor stub
+
+	public CommitRequest(String txId) {
+		super(PacketType.COMMIT_REQUEST, txId);
 	}
 
 	public CommitRequest(JSONObject json) throws JSONException {
@@ -29,6 +26,6 @@ public class CommitRequest extends TXPacket {
 
 	@Override
 	public Object getKey() {
-		return null;
+		return "COMMIT"+txid;
 	}
 }

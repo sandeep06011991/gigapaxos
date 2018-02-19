@@ -17,6 +17,10 @@ import java.util.Random;
  * @author arun
  *
  *         All transaction processing related packets inherit from this class.
+ *         TxPackets are used in the protocol Executor for event handling,
+ *         co ordinated at the actives and have a response that is sent back
+ *         Must implement all 3 given classes
+ *         Deleted respons
  */
 public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 		ClientRequest,ProtocolEvent {
@@ -25,7 +29,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	 * Transaction packet types.
 	 */
 	public enum PacketType implements IntegerPacketType {
-
+//		FIXME: minor task to add comments and poperties for each packet type
 		/**
 		 * 
 		 */
@@ -50,10 +54,11 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 		 * 
 		 */
 		TX_STATE_REQUEST(255), 
-		
+
 		/**
-		 * 
+		 *
 		 */
+
 		TX_OP_REQUEST (256),
 
 
@@ -63,7 +68,9 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 
 		RESULT(259),
 
-		TX_TAKEOVER(260)
+		TX_TAKEOVER(260),
+
+		TX_CLIENT(261)
 		;
 
 		private final int number;
@@ -82,18 +89,19 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 		public static final IntegerPacketTypeMap<PacketType> intToType = new IntegerPacketTypeMap<PacketType>(
 				PacketType.values());
 	}
-	public TXPacket response;
+
+	public TXResult response;
 	/* The tuple <txid, initiator> is used to detect conflicting txids chosen by
 	 * different initiating nodes. */
 	public String txid;
-	public boolean failed=false;
-	private ResponseCode code = null;
-	private IntegerPacketType packetType;
+
 	long requestId;
+
 	private static enum Keys {
-		TXID, LOCKID, INITIATOR
+		TXID, LOCKID, INITIATOR,REQUESTID,
 	}
 
+	static Random random=new Random();
 	/**
 	 * @param t
 	 * @param txid 
@@ -101,7 +109,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	public TXPacket(IntegerPacketType t, String txid) {
 		super(t);
 		this.txid = txid;
-		this.requestId=new Random().nextLong();
+		this.requestId=random.nextLong();
 	}
 
 
@@ -112,8 +120,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	public TXPacket(JSONObject json) throws JSONException {
 		super(json);
 		this.txid = json.getString(Keys.TXID.toString());
-		this.failed=json.getBoolean("failed");
-		this.requestId=json.getLong("requestId");
+		this.requestId=json.getLong(Keys.REQUESTID.toString());
 	}
 
 	@Override
@@ -124,59 +131,33 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 
 	@Override
 	public String getServiceName() {
-		// TODO Auto-generated method stub
+		// FIXME: This works for fixed groups only
 		return "Service_name_txn";
 	}
 
 	@Override
 	public long getRequestID() {
-		// TODO Auto-generated method stub
+//		Unique Identifier for each request
+//		This ensures callbacks
 		return requestId;
 	}
 
 	@Override
 	public ClientRequest getResponse() {
-		// TODO Auto-generated method stub
 		return response;
 	}
 
 	@Override
 	public boolean needsCoordination() {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
 	protected JSONObject toJSONObjectImpl() throws JSONException {
-		// TODO Auto-generated method stub
 		return new JSONObject();
 	}
 
-	/**
-	 * @return True if this request failed; false otherwise.
-	 */
-	public boolean isFailed() {
-		return this.failed;
-	}
-	//Why is this private
-	public TXPacket setFailed() {
-		this.failed = true;
-		return this;
-	}
 
-	/**
-	 * @return Response code.
-	 */
-	public ResponseCode getResponseCode() {
-		return this.code;
-	}
-
-	/**
-	 * @param code
-	 */
-	public void setResponseCode(ResponseCode code) {
-		this.code = code;
-	}
 
 	/**
 	 * @return The ID of the transaction to which this packet corresponds. The
@@ -192,8 +173,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	public JSONObject toJSONObject() throws JSONException {
 		JSONObject jsonObject=super.toJSONObject();
 		jsonObject.put(Keys.TXID.toString(),txid);
-		jsonObject.put("failed",this.failed);
-		jsonObject.put("requestId",this.requestId);
+		jsonObject.put(Keys.REQUESTID.toString(),this.requestId);
 		return jsonObject;
 	}
 
@@ -208,12 +188,13 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 
 	@Override
 	public Object getMessage() {
-		return TXPacket.this;
+		return this;
 	}
 
 	@Override
 	public void setKey(Object key) {
 		throw new RuntimeException("set Key event should never be called");
 	}
+
 
 }

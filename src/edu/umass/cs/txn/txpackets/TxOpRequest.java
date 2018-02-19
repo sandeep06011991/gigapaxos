@@ -15,25 +15,23 @@ import java.util.Random;
  * @author arun
  *
  */
-public class TxOpRequest extends TXPacket implements TxOp {
-
+public class TxOpRequest extends TXPacket  {
 	private static enum Keys {
-		REQUEST,
+		REQUEST,OPID
 	}
 
 	public Request request;
 
-	public long requestId;
 
+	public int opId;
 	/**
 	 * @param txid
 	 * @param request
 	 */
-	public TxOpRequest(String txid, Request request) {
+	public TxOpRequest(String txid, Request request,int opId) {
 		super(TXPacket.PacketType.TX_OP_REQUEST, txid);
 		this.request = request;
-		requestId = new Random().nextLong();
-
+		this.opId = opId;
 	}
 
 	/**
@@ -47,27 +45,11 @@ public class TxOpRequest extends TXPacket implements TxOp {
 	 */
 	public TxOpRequest(JSONObject json, AppRequestParser parser)
 			throws JSONException, RequestParseException {
+//		FIXME App Request parser should be fixed
 		super(json);
-		requestId=json.getLong("reqId");
 		this.request = parser
 				.getRequest(json.getString(Keys.REQUEST.toString()));
-	}
-
-	//@Override
-	public String getTxID() {
-		return this.txid;
-	}
-
-	@Override
-	public boolean handleResponse(Request response) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public boolean isBlocking() {
-		// TODO Auto-generated method stub
-		return false;
+		this.opId	 =  json.getInt(Keys.OPID.toString());
 	}
 
 
@@ -77,15 +59,15 @@ public class TxOpRequest extends TXPacket implements TxOp {
 		if(request !=null){
 			jsonObject.put(Keys.REQUEST.toString(),((AppRequest)request).toJSONObject());
 		}
-		jsonObject.put("reqId",requestId);
+	 	jsonObject.put(Keys.OPID.toString(),opId);
 		return jsonObject;
 	}
 
 	public TxOpRequest(JSONObject jsonObject)throws JSONException{
+//		FIXME: Should not be App Specific
 		super(jsonObject);
 		JSONObject jsonObject1=jsonObject.getJSONObject(Keys.REQUEST.toString());
 		request=new AppRequest(jsonObject1);
-		requestId=jsonObject.getLong("reqId");
 	}
 
 	public String getServiceName(){
@@ -95,18 +77,8 @@ public class TxOpRequest extends TXPacket implements TxOp {
 
 	@Override
 	public Object getKey() {
-		return txid+"Execute";
+		return txid;
 	}
 
-	@Override
-	public long getRequestID() {
-		// TODO Auto-generated method stub
-		return this.requestId ;
-	}
-
-	@Override
-	public boolean needsCoordination() {
-		return true;
-	}
 
 }

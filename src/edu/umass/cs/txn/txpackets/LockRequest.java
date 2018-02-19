@@ -19,23 +19,10 @@ public class LockRequest extends TXPacket {
 
 	private final String lockID;
 
-	public boolean coordination=true;
-
-	public boolean success=false;
-	/**
-	 * @param lockID
-	 * @param tx
-	 */
-	public LockRequest(String lockID, Transaction tx) {
-		super(TXPacket.PacketType.LOCK_REQUEST, tx.getTXID());
-		this.lockID = lockID;
-	}
 
 	public LockRequest(String lockId,String txId){
 		super(PacketType.LOCK_REQUEST,txId);
 		this.lockID=lockId;
-		this.coordination=false;
-
 	}
 	/**
 	 * @param json
@@ -44,18 +31,11 @@ public class LockRequest extends TXPacket {
 	public LockRequest(JSONObject json) throws JSONException {
 		super(json);
 		this.lockID = json.getString(Keys.LOCKID.toString());
-		this.success=json.getBoolean("SUCCESS");
-//		if(json.has("response")){
-//			this.response=new LockRequest(json.getJSONObject("response"));
-//		}
 	}
+
 	public JSONObject toJSONObject() throws JSONException{
 		JSONObject jsonObject=super.toJSONObject();
 		jsonObject.put(Keys.LOCKID.toString(),lockID);
-		jsonObject.put("SUCCESS",success);
-//		if(response!=null){
-//			jsonObject.put("response",response.toJSONObject());
-//		}
 		return jsonObject;
 	}
 	/**
@@ -71,12 +51,12 @@ public class LockRequest extends TXPacket {
 
 	@Override
 	public boolean needsCoordination() {
-		return coordination;
+		return true;
 	}
 
 	@Override
 	public Object getKey() {
-		return txid+"Lock";
+		return txid;
 	}
 
 

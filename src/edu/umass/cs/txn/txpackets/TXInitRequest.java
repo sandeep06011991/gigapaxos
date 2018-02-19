@@ -2,7 +2,9 @@ package edu.umass.cs.txn.txpackets;
 import edu.umass.cs.txn.Transaction;
 import org.json.JSONException;
 import org.json.JSONObject;
-
+/*
+*   Sent by Entry server after receiving the
+* */
 public class TXInitRequest extends TXPacket{
     public Transaction transaction;
 

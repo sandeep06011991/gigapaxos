@@ -21,11 +21,7 @@ import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
 import edu.umass.cs.reconfiguration.interfaces.ReconfigurableRequest;
 import edu.umass.cs.reconfiguration.interfaces.ReconfiguratorCallback;
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
-import edu.umass.cs.txn.interfaces.TXInterface;
-import edu.umass.cs.txn.txpackets.LockRequest;
-import edu.umass.cs.txn.txpackets.TXInitRequest;
 import edu.umass.cs.txn.txpackets.TXPacket;
-import edu.umass.cs.txn.txpackets.TxOpRequest;
 import edu.umass.cs.utils.Config;
 import edu.umass.cs.utils.GCConcurrentHashMap;
 
@@ -47,7 +43,6 @@ public  abstract class AbstractTransactor<NodeIDType> extends
 	protected AbstractTransactor(
 			AbstractReplicaCoordinator<NodeIDType> coordinator) {
 		super(coordinator);
-		System.out.println("Class of Coordinator"+coordinator.getClass());
 		assert (coordinator instanceof PaxosReplicaCoordinator);
 		this.coordinator = coordinator;
 		this.coordinator.setCallback(this);
@@ -184,5 +179,10 @@ public  abstract class AbstractTransactor<NodeIDType> extends
 	public void executed(Request request, boolean handled) {
 //		Uselessly call
 		System.out.println("Nothing much done");
+	}
+
+	public boolean execute(Request request, boolean noReplyToClient,
+						   ExecutedCallback requestCallback) {
+		return this.coordinator.execute(request, noReplyToClient, requestCallback);
 	}
 }

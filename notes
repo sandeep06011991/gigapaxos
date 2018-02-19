@@ -77,6 +77,11 @@ Transactor.java  TXInterface.java  TXLocker.java  TxOp.java  TXRequest.java
 txn/testing:
 NoopAppTX.java
 
-txn/txpackets:
-AbortRequest.java   LockRequest.java  TXPacket.java        UnlockRequest.java
-CommitRequest.java  TxOpRequest.java  TxStateRequest.java
+txn/txpackets: --- ALL Fixed
+AbortRequest.java
+LockRequest.java
+TXPacket.java ******************************* Cleaned
+UnlockRequest.java
+CommitRequest.java  ***************************
+TxOpRequest.java
+TxStateRequest.java

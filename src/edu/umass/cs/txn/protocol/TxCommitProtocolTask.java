@@ -6,17 +6,28 @@ import edu.umass.cs.protocoltask.ProtocolEvent;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
 import edu.umass.cs.txn.Transaction;
-import edu.umass.cs.txn.txpackets.LockRequest;
-import edu.umass.cs.txn.txpackets.TXPacket;
-import edu.umass.cs.txn.txpackets.UnlockRequest;
+import edu.umass.cs.txn.txpackets.*;
 
 import java.util.*;
 
-public class TxCommitProtocolTask<NodeIDType> extends
+public  class TxCommitProtocolTask<NodeIDType> extends
         TransactionProtocolTask<NodeIDType>{
 
     public TxCommitProtocolTask(Transaction t){
         super(t);
+    }
+
+
+
+    @Override
+    public TransactionProtocolTask onStateChange(TxStateRequest request) {
+        throw new RuntimeException("Commit Protocol is the end, no more request to see");
+    }
+
+    @Override
+    public TransactionProtocolTask onTakeOver(TXTakeover request, boolean isPrimary) {
+        if(isPrimary){throw new RuntimeException("Safety VIOLATION");}
+        return new TxSecondaryProtocolTask(transaction,TxState.COMMITTED);
     }
 
     @Override
@@ -61,7 +72,7 @@ public class TxCommitProtocolTask<NodeIDType> extends
 
     @Override
     public String getKey() {
-        return transaction.getTXID()+"Unlock";
+        return transaction.getTXID();
     }
 
 }

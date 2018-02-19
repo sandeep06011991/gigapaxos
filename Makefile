@@ -22,4 +22,4 @@ client:
 	./bin/gpClient.sh edu.umass.cs.txn.TxnClient
 
 kill:
-	ps | grep java | awk 'BEGIN {}{print $1}' | xargs  kill -9
+	ps | grep java | awk 'BEGIN {}{print $$1}' | xargs  kill -9

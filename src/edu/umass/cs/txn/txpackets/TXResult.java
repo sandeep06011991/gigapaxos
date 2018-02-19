@@ -4,16 +4,21 @@ import edu.umass.cs.nio.interfaces.IntegerPacketType;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.security.Key;
 import java.util.Random;
 
 public class TXResult extends TXPacket{
 //  opId is used to match packets after they have been recieved in the ProtocolTask
 //  Used for identifying within the same key
+//  Example diffrent operations
     String opId;
 //    Used to demultiplex to protocolExecutor Handler
 //    All packets for the same state have the same key
     String key;
 
+    private enum  KEYS{
+        OPPACKETTYPE, SUCCESS, KEY, OPID
+    }
 
     boolean success=false;
 
@@ -29,6 +34,7 @@ public class TXResult extends TXPacket{
     @Override
     public JSONObject toJSONObject() throws JSONException{
         JSONObject jsonObject=super.toJSONObject();
+//        FIXME: Use ENUM to do all this
         jsonObject.put("opPacketType",opPacketType.getInt());
         jsonObject.put("success",success);
         jsonObject.put("key",key);
@@ -45,7 +51,7 @@ public class TXResult extends TXPacket{
         opId=jsonObject.getString("opId");
     }
 
-    @Override
+
     public boolean isFailed() {
         return !success;
     }

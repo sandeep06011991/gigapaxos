@@ -6,11 +6,11 @@ import org.json.JSONObject;
 
 public class TXTakeover extends TXPacket{
 
+//  Set by the Messenger before sending the Message
     String nodeId;
 
-    public TXTakeover(IntegerPacketType t, String txid,String nodeId) {
+    public TXTakeover(IntegerPacketType t, String txid) {
         super(t, txid);
-        this.nodeId=nodeId;
     }
     @Override
     public boolean needsCoordination(){
@@ -36,4 +36,8 @@ public class TXTakeover extends TXPacket{
 
 
     public String getNewLeader(){return nodeId;}
+
+    public void setNewLeader(String nodeId){
+        this.nodeId=nodeId;
+    }
 }

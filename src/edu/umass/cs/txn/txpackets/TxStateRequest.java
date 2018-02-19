@@ -1,23 +1,19 @@
 package edu.umass.cs.txn.txpackets;
 
-import edu.umass.cs.txn.Transaction;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+
 public class TxStateRequest extends TXPacket {
 
-	public static enum State {
-		COMMITTED, 
-		
-		ABORTED, 
-		
-		EXECUTING,
-	}
+	enum KEYS{
+		STATE
+	};
 
-//	private State state = State.EXECUTING;
-	String state;
+//	FIXME: Should this be public
+	TxState state;
 
-	public TxStateRequest(String txId,String state) {
+	public TxStateRequest(String txId,TxState state) {
 		super(TXPacket.PacketType.TX_STATE_REQUEST, txId);
 		this.state=state;
 	}
@@ -26,17 +22,17 @@ public class TxStateRequest extends TXPacket {
 
 	public TxStateRequest(JSONObject json) throws JSONException {
 		super(json);
-		state=json.getString("state");		// TODO Auto-generated constructor stub
+		state=TxState.valueOf(json.getString(KEYS.STATE.toString()));
 	}
 
 	@Override
 	public JSONObject toJSONObject() throws JSONException {
 		JSONObject jsonObject = super.toJSONObject();
-		jsonObject.put("state",state);
+		jsonObject.put(KEYS.STATE.toString(),state);
 		return jsonObject;
 	}
 
-	public String getState() {
+	public TxState getState() {
 		return this.state;
 	}
 

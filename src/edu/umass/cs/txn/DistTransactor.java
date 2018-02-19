@@ -2,7 +2,7 @@ package edu.umass.cs.txn;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
+
 import java.util.HashSet;
 import java.util.Set;
 
@@ -14,17 +14,15 @@ import edu.umass.cs.protocoltask.ProtocolTask;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
-import edu.umass.cs.reconfiguration.reconfigurationpackets.ClientReconfigurationPacket;
-import edu.umass.cs.reconfiguration.reconfigurationpackets.CreateServiceName;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.RequestActiveReplicas;
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
-import edu.umass.cs.txn.exceptions.ResponseCode;
+
 import edu.umass.cs.txn.exceptions.TXException;
 import edu.umass.cs.txn.interfaces.TXLocker;
-import edu.umass.cs.txn.interfaces.TxOp;
 import edu.umass.cs.txn.protocol.*;
 import edu.umass.cs.txn.txpackets.*;
 import edu.umass.cs.utils.Config;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -56,13 +54,11 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	public DistTransactor(AbstractReplicaCoordinator<NodeIDType> coordinator)
 			throws IOException {
 		super(coordinator);
-		this.gpClient = TXUtils.getGPClient(this);
+			this.gpClient = TXUtils.getGPClient(this);
 		this.txLocker = new TXLockerMap();
 		TxMessenger txMessenger=new TxMessenger(this.gpClient,this);
 		protocolExecutor=new ProtocolExecutor<>(txMessenger);
 		txMessenger.setProtocolExecutor(protocolExecutor);
-		//Why do I need this wierd circular dependency
-		abstractReplicaCoordinator=this;
 	}
 
 
@@ -167,108 +163,9 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	 * @param tx
 	 * @throws TXException
 	 */
-	public void transact(Transaction tx) throws TXException,ReconfigurableAppClientAsync.ReconfigurationException {
-//		boolean locked = false, executed = false, committed = false;
-//		try {
-//			if (this.createTxGroup(tx) && (locked = getLocks(tx)))
-////					&& (executed = executeTxOps(tx))
-////					&& (committed = commit(tx)) && releaseLocks(tx))
-//				// all is good
-//				return;
-//
-//		} catch (IOException e) {
-//			throw new TXException(ResponseCode.IOEXCEPTION, e);
-//		}
-//		} finally {
-//			// abort
-//			if (!committed)
-//				abort(tx, locked, executed);
-//		}
-	}
 
-	private void abort(Transaction tx, boolean locked, boolean executed)
-			throws TXException {
-		assert (!executed || locked);
-		Request response = null;
-		if (locked && !executed) {
-			do {
-				try {
-					// try to get an abort committed in the transaction group
-					response = this.gpClient.sendRequest(new AbortRequest(tx
-							.getTxGroupName()));
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			} while (((AbortRequest) response).isFailed()
-					&& !((AbortRequest) response).isCommitted());
-		}
 
-		if (((AbortRequest) response).isCommitted())
-			this.releaseLocks(tx);
 
-		// else rollback participants
-		this.rollbackParticipantGroups(tx);
-	}
-
-	private void rollbackParticipantGroups(Transaction tx) {
-		ArrayList<Request> rollbacks = new ArrayList<Request>();
-		// abort participant groups until successful
-		for (String participantGroup : tx.getLockList())
-			rollbacks.add(new AbortRequest(participantGroup, tx
-					.getTxGroupName()));
-		/* best effort here is okay because one or more participant groups may
-		 * be unavailable, so the onus is on them to complete the rollback when
-		 * they are available again. */
-//		TXUtils.tryFinishAsyncTasks(this.gpClient, rollbacks);
-	}
-
-	private boolean commit(Transaction tx) throws TXException, IOException {
-		if (((CommitRequest) this.gpClient.sendRequest(new CommitRequest(tx)))
-				.isFailed())
-			throw new TXException(ResponseCode.COMMIT_FAILURE,
-					"Failed to commie transaction " + tx);
-		;
-		return true;
-	}
-
-	private boolean getLocks(Transaction tx) throws TXException, IOException {
-		for (String lockID : tx.getLockList())
-			if (((LockRequest) gpClient.sendRequest(new LockRequest(lockID,
-			/* The client ID is used as the ID of the initiator. */
-			tx))).isFailed())
-				throw new TXException(ResponseCode.LOCK_FAILURE,
-						"Failed to acquire lock " + lockID);
-		;
-		System.out.println("Lock ok");
-		return true;
-	}
-
-	private boolean executeTxOps(Transaction tx) throws TXException,
-			IOException {
-		Request response;
-		for (TxOp op : tx.getTxOps())
-			if (!op.handleResponse(response = gpClient.sendRequest(op)))
-				throw new TXException(ResponseCode.TXOP_FAILURE,
-						"Failed to execute transaction operation "
-								+ op.getSummary() + " : "
-								+ response.getSummary());
-
-		return true;
-	}
-
-	private boolean releaseLocks(Transaction tx) throws TXException {
-		ArrayList<Request> unlocks = new ArrayList<Request>();
-		for (String lockID : tx.getLockList())
-			unlocks.add(new UnlockRequest(lockID,
-			/* The client ID is used as the ID of the initiator. */
-			gpClient.toString()));
-//		Request[] responses = TXUtils.tryFinishAsyncTasks(gpClient, unlocks);
-//		for (Request response : responses)
-//			if (((UnlockRequest) response).isFailed())
-//				return false;
-		return true;
-	}
 
 	private boolean fixedTXGroupCreated = true;
 	private static final boolean FIXED_TX_GROUP = true;
@@ -290,15 +187,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	private boolean createTxGroup(Transaction tx) throws IOException,ReconfigurableAppClientAsync.ReconfigurationException {
 		if (FIXED_TX_GROUP && this.fixedTXGroupCreated)
 			return true;
-		// else
-		CreateServiceName response = (CreateServiceName) (this.gpClient
-				.sendRequest(new CreateServiceName(FIXED_TX_GROUP ? Config
-						.getGlobalString(RC.TX_GROUP_NAME) : tx
-						.getTxGroupName(), tx.getTxInitState(), getTxGroup(tx
-						.getTXID()))));
-		return response != null
-				&& (!response.isFailed() || response.getResponseCode() == ClientReconfigurationPacket.ResponseCodes.DUPLICATE_ERROR)
-				&& (this.fixedTXGroupCreated = true);
+		throw new RuntimeException("Unimplemented");
 	}
 
 	private static final int MAX_TX_GROUP_SIZE = 11;
@@ -338,74 +227,48 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	}
 
 	public Request getRequestNew(String str) throws RequestParseException{
-		//Code similar to the one below, clean this mess
-		//Low Priority: Change everything into a switch case
 		try{
 			JSONObject jsonObject=new  JSONObject(str);
 			TXPacket.PacketType packetId=TXPacket.PacketType.intToType.get(jsonObject.getInt("type"));
-//			System.out.println("Recieved new packet"+ str);
-			if(packetId==TXPacket.PacketType.TX_INIT){
-				TXInitRequest txInitRequest= new TXInitRequest(jsonObject);
-//				txInitRequest.transaction.setEntryServer(header.sndr);
-				return txInitRequest;
+			if(packetId !=null){
+			switch(packetId) {
+				case TX_INIT:
+					return new TXInitRequest(jsonObject);
+				case LOCK_REQUEST:
+					return new LockRequest(jsonObject);
+				case TX_OP_REQUEST:
+					return new TxOpRequest(jsonObject);
+				case UNLOCK_REQUEST:
+					return new UnlockRequest(jsonObject);
+				case RESULT:
+					return new TXResult(jsonObject);
+				case TX_TAKEOVER:
+					return new TXTakeover(jsonObject);
+				case TX_STATE_REQUEST:
+					return new TxStateRequest(jsonObject);
+				case TX_CLIENT:
+					return new TxClientRequest(jsonObject);
+				default:
+						throw new RuntimeException("Forgot handling some TX packet");
+				}
 			}
-			if(packetId==TXPacket.PacketType.LOCK_REQUEST){
-				LockRequest lockRequest=new LockRequest(jsonObject);
-				return lockRequest;
-			}
-			if(packetId==TXPacket.PacketType.TX_OP_REQUEST){
-				TxOpRequest txOpRequest=new TxOpRequest(jsonObject);
-				return  txOpRequest;
-			}
-			if(packetId==TXPacket.PacketType.UNLOCK_REQUEST){
-				System.out.println("Recieved is an UnlockRequest");
-				UnlockRequest unlockRequest=new UnlockRequest(jsonObject);
-				return unlockRequest;
-			}
-			if(packetId==TXPacket.PacketType.RESULT){
-				System.out.println("Recieved a Result request");
-				return new TXResult(jsonObject);
-			}
-			if(packetId == TXPacket.PacketType.TX_TAKEOVER){
-				System.out.println("Recieved a takeover request");
-				return new TXTakeover(jsonObject);
-			}
-			if(packetId == TXPacket.PacketType.TX_STATE_REQUEST){
-				System.out.println("Recieved a state request packet");
-				return new TxStateRequest(jsonObject);
-			}
-
-
-
-		}catch(Exception e){
-			e.printStackTrace();
-			//silent kill
+		}catch(JSONException e){
+			throw new RequestParseException(e);
 		}
-
 		return this.app.getRequest(str);
-//
 	}
 
 	public  Request getRequestNew(byte[] bytes, NIOHeader header)
 			throws RequestParseException{
-		//Code similar to the one above, clean this mess
-		//This seems unecessary as something similar already exists
-		//as a default method
+//		FIXME: These methods are highly specific
 		try{
 			String str=new String(bytes, NIOHeader.CHARSET);
 			Request request=getRequestNew(str);
-			if(request instanceof TXInitRequest){
-				((TXInitRequest) request).transaction.entryServer=header.sndr;
-				((TXInitRequest) request).transaction.nodeId=(String)getMyID();
-			}
 			return request;
-
 		}catch(Exception e){
 			e.printStackTrace();
-			//silent kill
 		}
 		return this.app.getRequest(bytes,header);
-//		return this.getApp()).getRequest(bytes,header);
 	}
 
 	public Set<IntegerPacketType> getAppRequestTypes(){
@@ -418,6 +281,21 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	@Override
 	public boolean preExecuted(Request request) {
 		if(request==null){return false;}
+		System.out.println(request.getClass());
+		if(request instanceof TxClientRequest){
+			Transaction transaction=new Transaction(this.getMessenger().getListeningSocketAddress(),
+					((TxClientRequest)request).getRequests(),(String) getMyID());
+			try {
+					this.gpClient.sendRequest(new TXInitRequest(transaction));
+
+			}catch (IOException ex){
+					throw new RuntimeException("Unable to send Transaction to Fixed Groups");
+				}
+			return true;
+			}
+
+//		FIXME: Minor Redundancy why is nodeID being stored both at the transaction
+//		FIXME: and inside the secondary transaction protocol
 		if(request instanceof TXInitRequest){
 			TXInitRequest trx=(TXInitRequest)request;
 				if(trx.transaction.nodeId.equals(getMyID())){
@@ -425,7 +303,9 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 					this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(trx.transaction));
 				}else{
 					System.out.println("Initiating Secondary Transaction");
-					this.protocolExecutor.spawnIfNotRunning(new TxSecondaryProtocolTask<>(trx.transaction,"INIT"));
+					this.protocolExecutor.spawnIfNotRunning(
+							new TxSecondaryProtocolTask<>
+									(trx.transaction,TxState.INIT));
 				}
 			return true;
 		}
@@ -437,12 +317,12 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 							true,(String) lockRequest.getKey(),lockRequest.getLockID());
 			result.setRequestId(lockRequest.getRequestID());
 			lockRequest.response=result;
+			System.out.println(lockRequest.response.getRequestID()+"requestID");
 			return true;
 		}
 
 		if(request instanceof UnlockRequest){
-//			Fix with TxResult
-			System.out.println("Lock request recieved");
+			System.out.println("UnLock request recieved");
 			UnlockRequest unlockRequest=(UnlockRequest)request ;
 			TXResult txResult= new TXResult(unlockRequest.txid,unlockRequest.getTXPacketType(),
 					true,(String) unlockRequest.getKey(),unlockRequest.getLockID());;
@@ -452,105 +332,37 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		}
 
 		if(request instanceof TxOpRequest){
-//			Rewrite TXOprequest with correct Answer
-//			Fix: Op ID on TXOP
+//			FIXME: Op ID on TXOP
 			System.out.println("recieved TxOp request");
 			TxOpRequest txOpRequest=(TxOpRequest) request;
 			TXResult result=new TXResult(txOpRequest.txid,txOpRequest.getTXPacketType(),
-							true,(String) txOpRequest.getKey(),"Fix it later");
+							true,(String) txOpRequest.getKey(),Integer.toString(txOpRequest.opId));
 			result.setRequestId(txOpRequest.getRequestID());
 			txOpRequest.response=result;
-			txOpRequest.response.failed=false;
 
 			return true;
 			}
 
 		if(request instanceof TxStateRequest){
-		ProtocolTask protocolTask=protocolExecutor.getTask(((TxStateRequest) request).getTXID());
-		ProtocolTask newProtocolTask;
-		String newState=((TxStateRequest) request).getState();
-		if(protocolTask instanceof TxSecondaryProtocolTask){
-			String state=((TxSecondaryProtocolTask) protocolTask).getState();
-			if(state.equals("INIT")){
-				state=newState;
-			}
-			newProtocolTask=new TxSecondaryProtocolTask(((TxSecondaryProtocolTask) protocolTask).getTransaction(),state);
-		}else{
-			protocolTask=protocolExecutor.getTask(((TxStateRequest) request).getTXID()+"Execute");
-			if(protocolTask instanceof TxExecuteProtocolTask){
-				if(newState.equals("COMMIT")){
- 					newProtocolTask=new TxCommitProtocolTask(((TxExecuteProtocolTask) protocolTask).getTransaction());
-				}else{
-					throw new RuntimeException("Abort Task not implemented");
-				}
-			}else{
-				throw new RuntimeException("Not possible" + protocolTask.getClass().toString());
-			}
-
+		TransactionProtocolTask protocolTask=(TransactionProtocolTask) protocolExecutor.getTask(((TxStateRequest) request).getTXID());
+		ProtocolTask newProtocolTask=protocolTask.onStateChange((TxStateRequest) request);
+		protocolExecutor.remove((String)protocolTask.getKey());
+		protocolExecutor.spawn(newProtocolTask);
+		return true;
 		}
-			protocolExecutor.remove((String)protocolTask.getKey());
+
+		if(request instanceof TXTakeover){
+			TXTakeover txRequest=(TXTakeover)request;
+			TransactionProtocolTask protocolTask=(TransactionProtocolTask) protocolExecutor.getTask(txRequest.txid);
+			boolean isPrimary=txRequest.getNewLeader().equals((String)getMyID());
+			ProtocolTask newProtocolTask = protocolTask.onTakeOver(txRequest,isPrimary);
+			ProtocolExecutor.cancel(protocolTask);
 			protocolExecutor.spawn(newProtocolTask);
 			return true;
 			}
 
-		if(request instanceof TXTakeover){
-//			Low Priority:rewrite this code with interfaces
-//			SHIT CODE, clean this mess
-			TXTakeover txRequest=(TXTakeover)request;
-			ProtocolTask protocolTask=protocolExecutor.getTask(txRequest.txid);
-			ProtocolTask newProtocolTask;
-			if(!(protocolTask instanceof TxSecondaryProtocolTask)){
-				if(protocolTask instanceof TxCommitProtocolTask){
-					Transaction transaction=((TxCommitProtocolTask) protocolTask).getTransaction();
-					ProtocolExecutor.enqueueCancel(protocolTask.getKey());
-					protocolExecutor.spawn(new TxSecondaryProtocolTask<>(transaction,"COMMIT"));
-				}else if(protocolTask instanceof TxExecuteProtocolTask){
-					Transaction transaction=((TxExecuteProtocolTask) protocolTask).getTransaction();
-					ProtocolExecutor.enqueueCancel(protocolTask.getKey());
-					protocolExecutor.spawn(new TxSecondaryProtocolTask<>(transaction,"INIT"));
-				}else if(protocolTask instanceof TxLockProtocolTask){
-					Transaction transaction=((TxLockProtocolTask) protocolTask).getTransaction();
-					ProtocolExecutor.enqueueCancel(protocolTask.getKey());
-					protocolExecutor.spawn(new TxSecondaryProtocolTask<>(transaction,"INIT"));
-				}else if(protocolTask instanceof TxAbortProtocolTask){
-					Transaction transaction=((TxLockProtocolTask) protocolTask).getTransaction();
-					ProtocolExecutor.enqueueCancel(protocolTask.getKey());
-					protocolExecutor.spawn(new TxSecondaryProtocolTask<>(transaction,"ABORT"));
-				}else{
-					throw new RuntimeException("Not implemented");
-				}
-
-			}else{
-				TxSecondaryProtocolTask task=(TxSecondaryProtocolTask)protocolTask;
-				if(getMyID().equals(((TXTakeover) request).getNewLeader())){
-					if(task.getState().equals("INIT")){
-						newProtocolTask = new TxLockProtocolTask(task.getTransaction());
-					}else if(task.getState().equals("COMMIT")){
-						newProtocolTask = new TxCommitProtocolTask(task.getTransaction());
-					}else if(task.getState().equals("ABORT")){
-						throw new RuntimeException("Abort not implemented");
-// newProtocolTask = new TxAbortProtocolTask(task.getTransaction());
-					}
-					ProtocolExecutor.enqueueCancel(task.getKey());
-					protocolExecutor.spawn(task);
-
-				}else{
-
-				}
-				newProtocolTask=new TxSecondaryProtocolTask(task.getTransaction(),task.getState());
-				protocolExecutor.remove(task.getKey());
-				protocolExecutor.spawn(newProtocolTask);
-					//spawn secondary timer
-			}
-			return true;
-		}
-
 		return false;
 	}
 
-	static AbstractReplicaCoordinator abstractReplicaCoordinator;
-	public static AbstractReplicaCoordinator getSingleton(){
-		return abstractReplicaCoordinator;
-	}
 
 }

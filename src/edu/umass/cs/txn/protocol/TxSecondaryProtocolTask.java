@@ -9,24 +9,28 @@ import edu.umass.cs.txn.DistTransactor;
 import edu.umass.cs.txn.Transaction;
 import edu.umass.cs.txn.txpackets.TXPacket;
 import edu.umass.cs.txn.txpackets.TXTakeover;
+import edu.umass.cs.txn.txpackets.TxState;
+import edu.umass.cs.txn.txpackets.TxStateRequest;
 
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
-public class TxSecondaryProtocolTask<NodeIDType> implements
-        SchedulableProtocolTask<NodeIDType, TXPacket.PacketType, String> {
+public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask<NodeIDType> implements
+        SchedulableProtocolTask<NodeIDType, TXPacket.PacketType, String>  {
 
-    String state;
+    TxState state;
 
-    Transaction transaction;
 
-    public TxSecondaryProtocolTask(Transaction transaction,String state){
-       this.transaction=transaction;
-       this.state=state;
+
+
+    public TxSecondaryProtocolTask(Transaction transaction,TxState state){
+
+        super(transaction);
+        this.state=state;
     }
 
-    public String getState() {
+    public TxState getState() {
         return state;
     }
 
@@ -35,9 +39,27 @@ public class TxSecondaryProtocolTask<NodeIDType> implements
     }
 
     @Override
-    public GenericMessagingTask<NodeIDType, ?>[] handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType, TXPacket.PacketType, String>[] ptasks) {
-        // Fix:Just change state
-        return null;
+    public TransactionProtocolTask onStateChange(TxStateRequest request) {
+        TxState newState=request.getState();
+        if((state != TxState.INIT ) && (newState !=state)){
+           throw new RuntimeException("SAFETY VOILATION");
+        }
+        return new TxSecondaryProtocolTask(transaction,newState);
+    }
+
+    @Override
+    public TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary) {
+        if(isPrimary){
+            return new TxLockProtocolTask<>(transaction);
+        }else{
+            return new TxSecondaryProtocolTask(transaction,state);
+        }
+    }
+
+    @Override
+    public GenericMessagingTask<NodeIDType, ?>[]
+    handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType,TXPacket.PacketType, String>[] ptasks) {
+        throw new RuntimeException("Should never be called");
     }
 
     @Override
@@ -59,24 +81,17 @@ public class TxSecondaryProtocolTask<NodeIDType> implements
 
     @Override
     public GenericMessagingTask<NodeIDType, ?>[] restart() {
-        AbstractReplicaCoordinator coordinator=DistTransactor.getSingleton();
-        TXTakeover request=new TXTakeover(TXPacket.PacketType.TX_TAKEOVER,transaction.getTXID(),(String)coordinator.getMyID());
-        try {
-            coordinator.coordinateRequest(request, null);
-        }catch (Exception ex){
-            // Silent kill of exception;
-            ex.printStackTrace();
-            System.out.println("Failed to take over");
-        }
-        return null;
+        TXTakeover request=new TXTakeover(TXPacket.PacketType.TX_TAKEOVER,transaction.getTXID());
+        return getMessageTask(request);
     }
 
-    static Random random=new Random(10);
+
     @Override
     public long getPeriod() {
-        //Low Priority: optimiza random generation
-//        long period = 10000+(random.nextInt()%10000);
-//        System.out.println(period);
+//        FIXME: Write a test that Test this getPeriod
+//        FIXME: Write a random wait Period generator
         return  1000000000;
     }
+
+
 }

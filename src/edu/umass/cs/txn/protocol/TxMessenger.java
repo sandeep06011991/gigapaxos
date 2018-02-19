@@ -1,6 +1,6 @@
 package edu.umass.cs.txn.protocol;
 
-import com.sun.org.apache.regexp.internal.RE;
+
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.gigapaxos.interfaces.RequestCallback;
 import edu.umass.cs.nio.AbstractPacketDemultiplexer;
@@ -13,6 +13,7 @@ import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
 import edu.umass.cs.txn.txpackets.TXPacket;
+import edu.umass.cs.txn.txpackets.TXTakeover;
 import edu.umass.cs.txn.txpackets.TxOpRequest;
 import org.json.JSONException;
 
@@ -38,12 +39,15 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
     }
     public void sendObject(Object message){
         try {
+            if(message instanceof TXTakeover){
+                ((TXTakeover) message).setNewLeader((String)getMyID());
+            }
             this.gpClient.sendRequest((Request) message, new RequestCallback() {
                 @Override
 
                 public void handleResponse(Request response) {
                     if (response instanceof TXPacket) {
-//                           System.out.println("Recieved a new TxPacket ");
+                           System.out.println("Recieved a new TxPacket ");
 //                           System.out.println(((TXPacket)response).getKey());
                            TxMessenger.this.pe.handleEvent((TXPacket)response);
                     } else {
@@ -143,4 +147,6 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
         throw new RuntimeException("TxMessengerFunction not required");
 //        return false;
     }
+
+
 }

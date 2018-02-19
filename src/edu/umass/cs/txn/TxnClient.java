@@ -8,6 +8,7 @@ import edu.umass.cs.reconfiguration.examples.AppRequest;
 import edu.umass.cs.reconfiguration.examples.NoopAppClient;
 import edu.umass.cs.txn.interfaces.TxOp;
 import edu.umass.cs.txn.txpackets.TXInitRequest;
+import edu.umass.cs.txn.txpackets.TxClientRequest;
 import edu.umass.cs.txn.txpackets.TxOpRequest;
 import org.json.JSONException;
 import edu.umass.cs.gigapaxos.interfaces.AppRequestParserBytes;
@@ -64,10 +65,9 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> implements 
                                 "request_value" + i+1,
                                 AppRequest.PacketType.DEFAULT_APP_REQUEST,
                                 false));
-                        Transaction transaction=new Transaction(entryServer,requests);
-                        TXInitRequest txInitRequest=new TXInitRequest(transaction);
-                        //Convert everything to JSON
-                        sendRequest(txInitRequest,entryServer, new RequestCallback() {
+                        TxClientRequest txClientRequest=new TxClientRequest(requests);
+
+                        sendRequest(txClientRequest,entryServer, new RequestCallback() {
                             @Override
                             public void handleResponse(Request response) {
                                 System.out.print("Delivered");

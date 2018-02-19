@@ -8,6 +8,8 @@ import org.json.JSONObject;
  * @author arun
  *
  */
+
+// FIXME: Unlock is quite redundant with Commit Request
 public class UnlockRequest extends TXPacket {
 
 	private static enum Keys {

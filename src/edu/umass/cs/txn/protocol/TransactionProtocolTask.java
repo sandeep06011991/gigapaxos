@@ -5,10 +5,12 @@ import edu.umass.cs.nio.GenericMessagingTask;
 import edu.umass.cs.protocoltask.ProtocolTask;
 import edu.umass.cs.txn.Transaction;
 import edu.umass.cs.txn.txpackets.TXPacket;
+import edu.umass.cs.txn.txpackets.TXTakeover;
+import edu.umass.cs.txn.txpackets.TxStateRequest;
 
 import java.util.ArrayList;
 
-abstract class TransactionProtocolTask<NodeIDType> implements
+abstract public class TransactionProtocolTask<NodeIDType> implements
         ProtocolTask<NodeIDType, TXPacket.PacketType, String> {
 
     Transaction transaction;
@@ -33,13 +35,22 @@ abstract class TransactionProtocolTask<NodeIDType> implements
         return mtasks;
     }
 
-    public GenericMessagingTask<NodeIDType,?>[] getMessageTask(ArrayList<Request> request){
-
-
-        GenericMessagingTask temp = new GenericMessagingTask<NodeIDType,TxExecuteProtocolTask>(dummy, request.toArray());
-        GenericMessagingTask<NodeIDType, TxLockProtocolTask>[] mtasks = new GenericMessagingTask[1];
-        mtasks[0]=temp;
-        return mtasks;
+    public GenericMessagingTask<NodeIDType,?>[] getMessageTask(ArrayList<?> requests){
+//    FIXME:Dont know why I have to do this wierd
+        GenericMessagingTask<NodeIDType,?>[] ret=new GenericMessagingTask[requests.size()];
+        int i=0;
+        ArrayList<Integer> integers=new ArrayList<>(1);
+        for(Object request:requests){
+            ArrayList<Object> req=new ArrayList<>();
+            req.add(request);
+            ret[i]=new GenericMessagingTask<>(integers.toArray(),req.toArray());
+            i++;
+        }
+        return ret;
     }
+
+    public abstract TransactionProtocolTask onStateChange(TxStateRequest request);
+
+    public abstract TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary);
 }
 
