@@ -58,7 +58,7 @@ public class UnlockRequest extends TXPacket {
 
 	@Override
 	public Object getKey() {
-		return txid+"Unlock";
+		return txid;
 	}
 
 }

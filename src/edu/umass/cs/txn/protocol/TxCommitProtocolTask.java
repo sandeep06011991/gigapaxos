@@ -13,8 +13,11 @@ import java.util.*;
 public  class TxCommitProtocolTask<NodeIDType> extends
         TransactionProtocolTask<NodeIDType>{
 
-    public TxCommitProtocolTask(Transaction t){
-        super(t);
+    TreeSet<String> awaitingUnLock;
+
+    public TxCommitProtocolTask(Transaction t,ProtocolExecutor protocolExecutor)
+    {
+        super(t,protocolExecutor);
     }
 
 
@@ -27,38 +30,40 @@ public  class TxCommitProtocolTask<NodeIDType> extends
     @Override
     public TransactionProtocolTask onTakeOver(TXTakeover request, boolean isPrimary) {
         if(isPrimary){throw new RuntimeException("Safety VIOLATION");}
-        return new TxSecondaryProtocolTask(transaction,TxState.COMMITTED);
+        return new TxSecondaryProtocolTask(transaction,TxState.COMMITTED,getProtocolExecutor());
     }
 
     @Override
     public GenericMessagingTask<NodeIDType, ?>[]
     handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType,TXPacket.PacketType, String>[] ptasks) {
-        System.out.println("YIPPEE COMMIT PROTOCOL COMPLETE");
-        if(event instanceof UnlockRequest){
-            ProtocolExecutor.enqueueCancel(this.getKey());
+        if((event instanceof TXResult) &&((TXResult)event).getTXPacketType()==TXPacket.PacketType.UNLOCK_REQUEST){
+            TXResult txResult = (TXResult)event;
+            if(awaitingUnLock.contains(txResult.getOpId()) && !txResult.isFailed()){
+                awaitingUnLock.remove(txResult.getOpId());
+            }
+            if(awaitingUnLock.isEmpty()){
+                System.out.println("YIPPEE COMMIT PROTOCOL COMPLETE");
+                this.cancel();
+            }
+
         }
         return null;
     }
 
     @Override
     public GenericMessagingTask<NodeIDType, ?>[] start() {
-        TreeSet<String> tt = transaction.getLockList();
-        ArrayList<Integer> integers = new ArrayList<Integer>(1);
-        int i=0;
-        GenericMessagingTask<NodeIDType, TxLockProtocolTask>[] mtasks = new GenericMessagingTask[tt.size()];
-        for (String t : tt) {
-            Request unlockRequest = new UnlockRequest(t, transaction.getTXID());
-            ArrayList<Request> obj = new ArrayList(1);
-            obj.add(unlockRequest);
-            GenericMessagingTask temp =
-                    new GenericMessagingTask<NodeIDType, TxLockProtocolTask>(integers.toArray(), obj.toArray());
-            System.out.println(unlockRequest.getServiceName());
-            mtasks[i]=temp;
-            i++;
-            System.out.println("Begin Unlocking");
+//        FIXME: Forgot to clean this code
+        awaitingUnLock = transaction.getLockList();
+        ArrayList<Request> requests=new ArrayList<>();
+        for (String t : awaitingUnLock) {
+//          Low Priority: cleaner method exists
+            UnlockRequest unlockRequest= new UnlockRequest(t, transaction.getTXID());
+            requests.add(unlockRequest);
+
         }
-        return mtasks;
-//        return new GenericMessagingTask[0];
+        System.out.println("Begin UnLocking");
+
+        return getMessageTask(requests);
     }
 
 

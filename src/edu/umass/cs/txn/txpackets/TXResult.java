@@ -22,7 +22,7 @@ public class TXResult extends TXPacket{
 
     boolean success=false;
 
-    IntegerPacketType opPacketType;
+    public IntegerPacketType opPacketType;
 
     public TXResult(String txid,TXPacket.PacketType packetType,boolean success,String key,String opId) {
         super(PacketType.RESULT, txid);

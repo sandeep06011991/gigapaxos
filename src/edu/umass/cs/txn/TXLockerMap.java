@@ -1,5 +1,8 @@
 package edu.umass.cs.txn;
 
+import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
+import edu.umass.cs.gigapaxos.interfaces.Replicable;
+import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.txn.exceptions.TXException;
 import edu.umass.cs.txn.interfaces.TXLocker;
 
@@ -20,12 +23,23 @@ public class TXLockerMap implements TXLocker {
 	 * @throws TXException
 	 */
 
+	private AbstractReplicaCoordinator app;
+
+	TXLockerMap(AbstractReplicaCoordinator abstractReplicaCoordinator){
+		app = abstractReplicaCoordinator;
+	}
+
+//	<Service name, Tx ID>
 	private HashMap<String,String> txMap=new HashMap<>();
+//	<Service name , State string>
 	private HashMap<String,String> stateMap=new HashMap<>();
+//	FIXME: Get clearance from Arun
+	private HashMap<String,Long> allowedRequests = new HashMap<>();
 
 	@Override
-	public boolean lock(String serviceName,String lockID,String state) throws TXException {
+	public boolean lock(String serviceName,String lockID){
 		if(!(txMap.containsKey(serviceName))){
+			String state=app.checkpoint(serviceName);
 			txMap.put(serviceName,lockID);
 			stateMap.put(serviceName,state);
 			return true;
@@ -41,26 +55,37 @@ public class TXLockerMap implements TXLocker {
 	 * @param lockID
 	 * @throws TXException
 	 */
-	public boolean unlock(String serviceName,String lockID) throws TXException {
+	public boolean unlock(String serviceName,String lockID)  {
 		if(!(txMap.containsKey(serviceName))){
 			String lckID=txMap.get(serviceName);
 			if(lckID.equals(lockID)){
 				stateMap.remove(serviceName);
 				txMap.remove(serviceName);
+				if(allowedRequests.containsKey(serviceName)){
+					allowedRequests.remove(serviceName);
+				}
 				return true;
 			}
 		}
 		return false;
 	}
 
-	/**
-	 * Releases the locks in the order specified by {@code lockIDs}.
-	 * 
-	 * @param lockIDs
-	 * @throws TXException
-	 */
-	public void unlock(String[] lockIDs) throws TXException {
-		throw new RuntimeException("Unimplemented");
+	public boolean allowRequest(long requestId,String txID,String serviceName){
+		if(txMap.containsKey(serviceName) && txMap.get(serviceName).equals(txID)){
+			allowedRequests.put(serviceName,new Long(requestId));
+			return true;
+		}
+		return false;
+	}
+
+	public boolean isAllowedRequest(ClientRequest clientRequest){
+		String serviceName=clientRequest.getServiceName();
+		if(!isLocked(serviceName)){return true;}
+		if(allowedRequests.containsKey(serviceName)&& allowedRequests.get(serviceName).longValue()==clientRequest.getRequestID()){
+			System.out.println("Request Is allowed");
+			return true;
+		}
+		return false;
 	}
 
 

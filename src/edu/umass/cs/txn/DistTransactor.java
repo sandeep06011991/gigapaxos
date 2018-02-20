@@ -14,6 +14,7 @@ import edu.umass.cs.protocoltask.ProtocolTask;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
+import edu.umass.cs.reconfiguration.examples.AppRequest;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.RequestActiveReplicas;
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
 
@@ -54,8 +55,8 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	public DistTransactor(AbstractReplicaCoordinator<NodeIDType> coordinator)
 			throws IOException {
 		super(coordinator);
-			this.gpClient = TXUtils.getGPClient(this);
-		this.txLocker = new TXLockerMap();
+		this.gpClient = TXUtils.getGPClient(this);
+		this.txLocker = new TXLockerMap(coordinator);
 		TxMessenger txMessenger=new TxMessenger(this.gpClient,this);
 		protocolExecutor=new ProtocolExecutor<>(txMessenger);
 		txMessenger.setProtocolExecutor(protocolExecutor);
@@ -281,7 +282,6 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	@Override
 	public boolean preExecuted(Request request) {
 		if(request==null){return false;}
-		System.out.println(request.getClass());
 		if(request instanceof TxClientRequest){
 			Transaction transaction=new Transaction(this.getMessenger().getListeningSocketAddress(),
 					((TxClientRequest)request).getRequests(),(String) getMyID());
@@ -300,32 +300,31 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			TXInitRequest trx=(TXInitRequest)request;
 				if(trx.transaction.nodeId.equals(getMyID())){
 					System.out.println("Initiating Primary Transaction");
-					this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(trx.transaction));
+					this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(trx.transaction,protocolExecutor));
 				}else{
 					System.out.println("Initiating Secondary Transaction");
 					this.protocolExecutor.spawnIfNotRunning(
 							new TxSecondaryProtocolTask<>
-									(trx.transaction,TxState.INIT));
+									(trx.transaction,TxState.INIT,protocolExecutor));
 				}
 			return true;
 		}
 		if(request instanceof LockRequest){
-			System.out.println("Lock request recieved");
 			LockRequest lockRequest=(LockRequest)request;
+			boolean success=txLocker.lock(lockRequest.getServiceName(),lockRequest.txid);
 			TXResult result=
 					new TXResult(lockRequest.txid,lockRequest.getTXPacketType(),
-							true,(String) lockRequest.getKey(),lockRequest.getLockID());
+							success,(String) lockRequest.getKey(),lockRequest.getLockID());
 			result.setRequestId(lockRequest.getRequestID());
 			lockRequest.response=result;
-			System.out.println(lockRequest.response.getRequestID()+"requestID");
 			return true;
 		}
 
 		if(request instanceof UnlockRequest){
-			System.out.println("UnLock request recieved");
 			UnlockRequest unlockRequest=(UnlockRequest)request ;
+			boolean success=txLocker.lock(unlockRequest.getServiceName(),unlockRequest.txid);
 			TXResult txResult= new TXResult(unlockRequest.txid,unlockRequest.getTXPacketType(),
-					true,(String) unlockRequest.getKey(),unlockRequest.getLockID());;
+					success,(String) unlockRequest.getKey(),unlockRequest.getLockID());;
 			txResult.setRequestId(unlockRequest.getRequestID());
 			unlockRequest.response=txResult;
 			return true;
@@ -333,13 +332,16 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 
 		if(request instanceof TxOpRequest){
 //			FIXME: Op ID on TXOP
-			System.out.println("recieved TxOp request");
 			TxOpRequest txOpRequest=(TxOpRequest) request;
-			TXResult result=new TXResult(txOpRequest.txid,txOpRequest.getTXPacketType(),
-							true,(String) txOpRequest.getKey(),Integer.toString(txOpRequest.opId));
+			boolean success=txLocker.isLocked(txOpRequest.getServiceName());
+			if(success){
+				txLocker.allowRequest(txOpRequest.request.getRequestID(),txOpRequest.txid,txOpRequest.getServiceName());
+				this.execute(txOpRequest.request,true,null);
+			}
+			TXResult result=new TXResult(txOpRequest.txid,txOpRequest.getTXPacketType(),success
+							,(String) txOpRequest.getKey(),Integer.toString(txOpRequest.opId));
 			result.setRequestId(txOpRequest.getRequestID());
 			txOpRequest.response=result;
-
 			return true;
 			}
 
@@ -356,11 +358,17 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			TransactionProtocolTask protocolTask=(TransactionProtocolTask) protocolExecutor.getTask(txRequest.txid);
 			boolean isPrimary=txRequest.getNewLeader().equals((String)getMyID());
 			ProtocolTask newProtocolTask = protocolTask.onTakeOver(txRequest,isPrimary);
-			ProtocolExecutor.cancel(protocolTask);
+			protocolTask.cancel();
 			protocolExecutor.spawn(newProtocolTask);
 			return true;
 			}
-
+		if((request instanceof ClientRequest)){
+			if(txLocker.isAllowedRequest((ClientRequest) request)){
+				return false;
+			}
+			System.out.println("DROPPING REQUEST. SYSTEM BUSY");
+			return true;
+		}
 		return false;
 	}
 

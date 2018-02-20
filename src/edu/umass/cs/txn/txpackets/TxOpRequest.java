@@ -1,5 +1,6 @@
 package edu.umass.cs.txn.txpackets;
 
+import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
 import edu.umass.cs.reconfiguration.examples.AppRequest;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -8,6 +9,7 @@ import edu.umass.cs.gigapaxos.interfaces.AppRequestParser;
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
 import edu.umass.cs.txn.interfaces.TxOp;
+import redis.clients.jedis.Client;
 
 import java.util.Random;
 
@@ -20,15 +22,15 @@ public class TxOpRequest extends TXPacket  {
 		REQUEST,OPID
 	}
 
-	public Request request;
+	public ClientRequest request;
 
 
-	public int opId;
+	public int opId=-10000;
 	/**
 	 * @param txid
 	 * @param request
 	 */
-	public TxOpRequest(String txid, Request request,int opId) {
+	public TxOpRequest(String txid, ClientRequest request,int opId) {
 		super(TXPacket.PacketType.TX_OP_REQUEST, txid);
 		this.request = request;
 		this.opId = opId;
@@ -47,7 +49,7 @@ public class TxOpRequest extends TXPacket  {
 			throws JSONException, RequestParseException {
 //		FIXME App Request parser should be fixed
 		super(json);
-		this.request = parser
+		this.request =(ClientRequest) parser
 				.getRequest(json.getString(Keys.REQUEST.toString()));
 		this.opId	 =  json.getInt(Keys.OPID.toString());
 	}
@@ -68,6 +70,7 @@ public class TxOpRequest extends TXPacket  {
 		super(jsonObject);
 		JSONObject jsonObject1=jsonObject.getJSONObject(Keys.REQUEST.toString());
 		request=new AppRequest(jsonObject1);
+		this.opId	 =  jsonObject.getInt(Keys.OPID.toString());
 	}
 
 	public String getServiceName(){

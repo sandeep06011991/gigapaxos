@@ -177,8 +177,6 @@ public  abstract class AbstractTransactor<NodeIDType> extends
 
 	@Override
 	public void executed(Request request, boolean handled) {
-//		Uselessly call
-		System.out.println("Nothing much done");
 	}
 
 	public boolean execute(Request request, boolean noReplyToClient,

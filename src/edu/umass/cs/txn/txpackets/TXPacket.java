@@ -149,7 +149,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 
 	@Override
 	public boolean needsCoordination() {
-		return false;
+		return true;
 	}
 
 	@Override

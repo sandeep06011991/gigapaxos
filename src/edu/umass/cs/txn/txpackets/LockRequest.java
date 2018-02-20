@@ -49,10 +49,6 @@ public class LockRequest extends TXPacket {
 		return this.getLockID();
 	}
 
-	@Override
-	public boolean needsCoordination() {
-		return true;
-	}
 
 	@Override
 	public Object getKey() {

@@ -2,6 +2,7 @@ package edu.umass.cs.txn.protocol;
 
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.nio.GenericMessagingTask;
+import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
 import edu.umass.cs.txn.Transaction;
 import edu.umass.cs.txn.txpackets.TXPacket;
@@ -15,13 +16,21 @@ abstract public class TransactionProtocolTask<NodeIDType> implements
 
     Transaction transaction;
 
-    TransactionProtocolTask(Transaction transaction){
-    this.transaction=transaction;
+    ProtocolExecutor protocolExecutor;
+
+    TransactionProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor){
+
+        this.transaction=transaction;
+        this.protocolExecutor=protocolExecutor;
     }
 
     public Transaction getTransaction() {
         return transaction;
 
+    }
+
+    public ProtocolExecutor getProtocolExecutor() {
+        return protocolExecutor;
     }
 
     static Object[] dummy={null,null};
@@ -52,5 +61,9 @@ abstract public class TransactionProtocolTask<NodeIDType> implements
     public abstract TransactionProtocolTask onStateChange(TxStateRequest request);
 
     public abstract TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary);
+
+    public void cancel(){
+        protocolExecutor.remove(this.getKey());
+    }
 }
 

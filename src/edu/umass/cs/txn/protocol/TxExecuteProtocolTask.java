@@ -1,5 +1,6 @@
 package edu.umass.cs.txn.protocol;
 
+import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.nio.GenericMessagingTask;
 import edu.umass.cs.protocoltask.ProtocolEvent;
@@ -20,14 +21,15 @@ public class TxExecuteProtocolTask<NodeIDType>
 // FixMe: Build a more efficient Retry mechanism
     ArrayList<String> sent=new ArrayList<>();
 
-    public TxExecuteProtocolTask(Transaction transaction){
-        super(transaction);
+    public TxExecuteProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor)
+    {
+        super(transaction,protocolExecutor);
     }
 
     @Override
     public TransactionProtocolTask onStateChange(TxStateRequest request) {
         if(request.getState()== TxState.COMMITTED){
-            return new TxCommitProtocolTask(transaction);
+            return new TxCommitProtocolTask(transaction,protocolExecutor);
         }else{
             throw new RuntimeException("Abort Unimplemented");
         }
@@ -36,14 +38,14 @@ public class TxExecuteProtocolTask<NodeIDType>
     @Override
     public TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary) {
         if(isPrimary){throw new RuntimeException("Safety Violation");}
-        return new TxSecondaryProtocolTask(transaction,TxState.INIT);
+        return new TxSecondaryProtocolTask(transaction,TxState.INIT,getProtocolExecutor());
     }
 
 
     @Override
     public GenericMessagingTask<NodeIDType, ?>[]
     handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType,TXPacket.PacketType, String>[] ptasks) {
-        if((event instanceof TXResult)&&(((TXResult) event).getTXPacketType()==TXPacket.PacketType.TX_OP_REQUEST)){
+        if((event instanceof TXResult)&&(((TXResult) event).opPacketType==TXPacket.PacketType.TX_OP_REQUEST)){
             TXResult txResult=(TXResult)event;
             System.out.println("Recieved Operation"+txResult.getOpId());
             sent.remove(txResult.getOpId());
@@ -64,7 +66,7 @@ public class TxExecuteProtocolTask<NodeIDType>
 //        ArrayList<Request> requests=transaction.getRequests();
         ArrayList<TxOpRequest> txOps=new ArrayList<>();
         int op=0;
-        for(Request request:transaction.getRequests()){
+        for(ClientRequest request:transaction.getRequests()){
             txOps.add(new TxOpRequest(transaction.getTXID(),request,op));
             sent.add(Integer.toString(op));
             op++;

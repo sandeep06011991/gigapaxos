@@ -23,3 +23,6 @@ client:
 
 kill:
 	ps | grep java | awk 'BEGIN {}{print $$1}' | xargs  kill -9
+
+test:
+	ant runtest -Dtest=edu.umass.cs.txn.testing.SerializabilityTest

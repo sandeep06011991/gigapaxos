@@ -15,6 +15,7 @@ import edu.umass.cs.utils.GCConcurrentHashMap;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import redis.clients.jedis.Client;
 
 /**
  * @author arun
@@ -49,11 +50,11 @@ public class Transaction extends JSONObject {
 	// Current Leader nodeID
 	String nodeId;
 
-	ArrayList<Request> requests;
+	ArrayList<ClientRequest> requests;
 	/**
 	 * @param entryServer
 	 */
-	public Transaction(InetSocketAddress entryServer ,ArrayList<Request> requests,String nodeId) {
+	public Transaction(InetSocketAddress entryServer ,ArrayList<ClientRequest> requests,String nodeId) {
 		this.txnId = getNewTxid(entryServer);
 		this.entryServer = entryServer;
 //		FIXME: Should this really be a request
@@ -76,7 +77,7 @@ public class Transaction extends JSONObject {
 		return set;
 	}
 
-	public ArrayList<Request> getRequests() {
+	public ArrayList<ClientRequest> getRequests() {
 		return requests;
 	}
 

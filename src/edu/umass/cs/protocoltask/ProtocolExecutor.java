@@ -460,6 +460,7 @@ public class ProtocolExecutor<NodeIDType, EventType, KeyType> {
 	 * @param task
 	 */
 	public static void cancel(ProtocolTask<?, ?, ?> task) {
+//		#BUG This is an unnecessary class
 		if (task != null)
 			throw new CancelProtocolTaskException("Canceling task "
 					+ task.getClass() + " with key " + task.getKey());

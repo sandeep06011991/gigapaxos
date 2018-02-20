@@ -17,14 +17,15 @@ public class TxLockProtocolTask<NodeIDType> extends
 
     TreeSet<String> awaitingLock;
 
-    public TxLockProtocolTask(Transaction transaction){
-        super(transaction);
+    public TxLockProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor)
+    {
+        super(transaction,protocolExecutor);
     }
 
     @Override
     public TransactionProtocolTask onStateChange(TxStateRequest request) {
         if(request.getState()== TxState.COMMITTED){
-            return new TxCommitProtocolTask(transaction);
+            return new TxCommitProtocolTask(transaction,getProtocolExecutor());
         }else{
             throw new RuntimeException("Abort Unimplemented");
         }
@@ -33,25 +34,25 @@ public class TxLockProtocolTask<NodeIDType> extends
     @Override
     public TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary) {
         if(isPrimary){throw new RuntimeException("Safety Violation");}
-        return new TxSecondaryProtocolTask(transaction,TxState.INIT);
+        return new TxSecondaryProtocolTask(transaction,TxState.INIT,getProtocolExecutor());
     }
 
 
     @Override
     public GenericMessagingTask<NodeIDType, ?>[]
     handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType,TXPacket.PacketType, String>[] ptasks) {
-        if((event instanceof TXResult)&&(((TXResult) event).getTXPacketType()==TXPacket.PacketType.LOCK_REQUEST)){
+        if((event instanceof TXResult)
+                &&(((TXResult) event).opPacketType==TXPacket.PacketType.LOCK_REQUEST)){
             TXResult txResult=(TXResult)event;
             String opId=txResult.getOpId();
 //FIXME: Is there a better way to map lock opId to Lock requests
             if(awaitingLock.remove(opId)){
                 System.out.println("Lock "+opId +" "+txResult.isFailed());
             }
-
-            if(awaitingLock.isEmpty()){
+        if(awaitingLock.isEmpty()){
                 System.out.println("All locks recieved");
-                ProtocolExecutor.cancel(this);
-                ptasks[0]=new TxExecuteProtocolTask(this.transaction);
+                this.cancel();
+                ptasks[0]=new TxExecuteProtocolTask(this.transaction,getProtocolExecutor());
             }
         }
         return null;
@@ -67,8 +68,10 @@ public class TxLockProtocolTask<NodeIDType> extends
 //          Low Priority: cleaner method exists
             LockRequest lockRequest = new LockRequest(t, transaction.getTXID());
             requests.add(lockRequest);
-            System.out.println("Begin Locking");
+
             }
+        System.out.println("Begin Locking");
+
         return getMessageTask(requests);
     }
 

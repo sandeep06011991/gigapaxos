@@ -2,6 +2,7 @@ package edu.umass.cs.txn.protocol;
 
 import edu.umass.cs.nio.GenericMessagingTask;
 import edu.umass.cs.protocoltask.ProtocolEvent;
+import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
 import edu.umass.cs.protocoltask.SchedulableProtocolTask;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
@@ -24,9 +25,10 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
 
 
 
-    public TxSecondaryProtocolTask(Transaction transaction,TxState state){
+    public TxSecondaryProtocolTask(Transaction transaction, TxState state
+            , ProtocolExecutor protocolExecutor){
 
-        super(transaction);
+        super(transaction,protocolExecutor);
         this.state=state;
     }
 
@@ -44,15 +46,15 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
         if((state != TxState.INIT ) && (newState !=state)){
            throw new RuntimeException("SAFETY VOILATION");
         }
-        return new TxSecondaryProtocolTask(transaction,newState);
+        return new TxSecondaryProtocolTask(transaction,newState,getProtocolExecutor());
     }
 
     @Override
     public TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary) {
         if(isPrimary){
-            return new TxLockProtocolTask<>(transaction);
+            return new TxLockProtocolTask<>(transaction,getProtocolExecutor());
         }else{
-            return new TxSecondaryProtocolTask(transaction,state);
+            return new TxSecondaryProtocolTask(transaction,state,getProtocolExecutor());
         }
     }
 

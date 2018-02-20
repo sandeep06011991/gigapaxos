@@ -47,7 +47,8 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
 
                 public void handleResponse(Request response) {
                     if (response instanceof TXPacket) {
-                           System.out.println("Recieved a new TxPacket ");
+//                           System.out.println("Recieved a new TxPacket ");
+
 //                           System.out.println(((TXPacket)response).getKey());
                            TxMessenger.this.pe.handleEvent((TXPacket)response);
                     } else {
