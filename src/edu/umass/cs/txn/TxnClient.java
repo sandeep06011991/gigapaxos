@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Set;
+
+import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
 import edu.umass.cs.reconfiguration.examples.AppRequest;
 import edu.umass.cs.reconfiguration.examples.NoopAppClient;
 import edu.umass.cs.txn.interfaces.TxOp;
@@ -22,6 +24,7 @@ import edu.umass.cs.reconfiguration.reconfigurationpackets.ActiveReplicaError;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.CreateServiceName;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.ReplicableClientRequest;
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
+import redis.clients.jedis.Client;
 
 /**
  * @author arun
@@ -56,7 +59,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> implements 
                     long reqInitime = System.currentTimeMillis();
                     try {
                         InetSocketAddress entryServer=new InetSocketAddress("127.0.0.1",2100);
-                        ArrayList<Request> requests=new ArrayList<>();
+                        ArrayList<ClientRequest> requests=new ArrayList<>();
                         requests.add(new AppRequest("name0",
                                 "request_value" + i,
                                 AppRequest.PacketType.DEFAULT_APP_REQUEST,

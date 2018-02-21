@@ -25,4 +25,7 @@ kill:
 	ps | grep java | awk 'BEGIN {}{print $$1}' | xargs  kill -9
 
 test:
+	rm -f tmp/*
+	rm -rf paxos_logs/*
+	rm -rf reconfiguration_DB/*
 	ant runtest -Dtest=edu.umass.cs.txn.testing.SerializabilityTest
