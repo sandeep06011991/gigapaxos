@@ -56,7 +56,7 @@ public class TXLockerMap implements TXLocker {
 	 * @throws TXException
 	 */
 	public boolean unlock(String serviceName,String lockID)  {
-		if(!(txMap.containsKey(serviceName))){
+		if((txMap.containsKey(serviceName))){
 			String lckID=txMap.get(serviceName);
 			if(lckID.equals(lockID)){
 				stateMap.remove(serviceName);

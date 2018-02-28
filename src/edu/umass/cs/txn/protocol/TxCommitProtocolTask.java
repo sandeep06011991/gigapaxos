@@ -2,6 +2,7 @@ package edu.umass.cs.txn.protocol;
 
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.nio.GenericMessagingTask;
+import edu.umass.cs.nio.JSONMessenger;
 import edu.umass.cs.protocoltask.ProtocolEvent;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
@@ -15,7 +16,7 @@ public  class TxCommitProtocolTask<NodeIDType> extends
 
     TreeSet<String> awaitingUnLock;
 
-    public TxCommitProtocolTask(Transaction t,ProtocolExecutor protocolExecutor)
+    public TxCommitProtocolTask(Transaction t, ProtocolExecutor protocolExecutor)
     {
         super(t,protocolExecutor);
     }
@@ -24,7 +25,8 @@ public  class TxCommitProtocolTask<NodeIDType> extends
 
     @Override
     public TransactionProtocolTask onStateChange(TxStateRequest request) {
-        throw new RuntimeException("Commit Protocol is the end, no more request to see");
+//        No new protocol to spawned on state change
+      return null;
     }
 
     @Override
@@ -36,14 +38,17 @@ public  class TxCommitProtocolTask<NodeIDType> extends
     @Override
     public GenericMessagingTask<NodeIDType, ?>[]
     handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType,TXPacket.PacketType, String>[] ptasks) {
-        if((event instanceof TXResult) &&((TXResult)event).getTXPacketType()==TXPacket.PacketType.UNLOCK_REQUEST){
+        if((event instanceof TXResult) &&((TXResult)event).opPacketType==TXPacket.PacketType.UNLOCK_REQUEST){
             TXResult txResult = (TXResult)event;
+
             if(awaitingUnLock.contains(txResult.getOpId()) && !txResult.isFailed()){
+                System.out.println("Unlocks recieved");
                 awaitingUnLock.remove(txResult.getOpId());
             }
             if(awaitingUnLock.isEmpty()){
-                System.out.println("YIPPEE COMMIT PROTOCOL COMPLETE");
-                this.cancel();
+                System.out.println("All unlocks recieved");
+                TxStateRequest request=new TxStateRequest(transaction.getTXID(),TxState.COMPLETE);
+                return getMessageTask(request);
             }
 
         }

@@ -6,6 +6,7 @@ import edu.umass.cs.reconfiguration.ReconfigurationConfig;
 import edu.umass.cs.reconfiguration.reconfigurationutils.DefaultNodeConfig;
 import edu.umass.cs.reconfiguration.testing.TESTReconfigurationConfig;
 import edu.umass.cs.reconfiguration.testing.TESTReconfigurationMain;
+import edu.umass.cs.txn.TxnClient;
 import edu.umass.cs.utils.Config;
 import edu.umass.cs.utils.DefaultTest;
 import org.junit.Test;
@@ -57,9 +58,9 @@ public class SerializabilityTest extends DefaultTest {
 //        FIXME: build a test framework and think of some tests
         String args[]={"edu.umass.cs.reconfiguration.examples.noopsimple.NoopApp"};
         startActives(args);
-        System.out.println("Hahaha Runnign Something");
-
+        TxnClient.function();
     }
+
     public static void main(String[] args) throws IOException,
             InterruptedException {
         new SerializabilityTest().testSomething();

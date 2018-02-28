@@ -1,21 +1,7 @@
 Question
 
-Features to build.
-Dont implement logic yet.
-Just write interfaces and code it up later. I know enough infrastructure to do this.
-
-Coding Marathon:
-Fix:
-Test 1:
-1. Primary Completes the (dummy) transaction but secondary is aware.
-11. TxResult for TxOpRequest to be built
-
-
-2. Secondary can recover the transaction but transaction is still dummy.
- (FINISH TESTING HERE)
 
 3. Rewire recieve and response from a client.
-3. Transaction Actually does something.
 4. Abort and rollback the transaction.
 
 
@@ -23,7 +9,7 @@ Test 1:
 
 
 ######################## WAIT ###########################
-d. How would responses be recieved by clients
+FIX:d. How would responses be recieved by clients
 e. Rebuild Secondary to take over primary with co-ordination.
 a. Transaction ID is being repeated.(fixed)
 b. Responses are messy, create a single packet interface(done)

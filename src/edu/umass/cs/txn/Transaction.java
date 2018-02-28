@@ -1,6 +1,7 @@
 package edu.umass.cs.txn;
 
 import java.net.InetSocketAddress;
+
 import java.util.ArrayList;
 import java.util.TreeSet;
 
@@ -37,7 +38,7 @@ import redis.clients.jedis.Client;
 public class Transaction extends JSONObject {
 
 	protected static enum Keys {
-		OPS, TXID, DELETES,NODEID,
+		OPS, TXID, DELETES,NODEID,REQUESTID,CLIENTADDR,ENTRYSERVER
 	}
 
 
@@ -47,6 +48,9 @@ public class Transaction extends JSONObject {
 
 	// the server issuing the transaction
 	public InetSocketAddress entryServer;
+
+	public InetSocketAddress clientAddr;
+	public long requestId=-1;
 	// Current Leader nodeID
 	String nodeId;
 
@@ -54,12 +58,14 @@ public class Transaction extends JSONObject {
 	/**
 	 * @param entryServer
 	 */
-	public Transaction(InetSocketAddress entryServer ,ArrayList<ClientRequest> requests,String nodeId) {
+	public Transaction(InetSocketAddress entryServer ,ArrayList<ClientRequest> requests,String nodeId,InetSocketAddress clientAddr,long requestId) {
 		this.txnId = getNewTxid(entryServer);
 		this.entryServer = entryServer;
 //		FIXME: Should this really be a request
 		this.requests = requests;
 		this.nodeId=nodeId;
+		this.clientAddr = clientAddr;
+		this.requestId = requestId;
 	}
 
 	/**
@@ -127,20 +133,30 @@ public class Transaction extends JSONObject {
 		}
 		jsonObject.put(Keys.OPS.toString(),j);
 		jsonObject.put(Keys.NODEID.toString(),nodeId);
-
+		if(requestId!=-1){jsonObject.put(Keys.REQUESTID.toString(),requestId);}
+		jsonObject.put(Keys.CLIENTADDR.toString(),clientAddr);
+		jsonObject.put(Keys.ENTRYSERVER.toString(),entryServer);
 		return jsonObject;
 	}
 
-	public Transaction(JSONObject jsonObject) throws JSONException{
-		txnId=jsonObject.getString(Keys.TXID.toString());
-		JSONArray ops=jsonObject.getJSONArray(Keys.OPS.toString());
-		requests=new ArrayList<>();
-		for(int i=0;i<ops.length();i++){
+	private static InetSocketAddress getSocketAddrFromString(String str){
+		str = str.replace("/","");
+		String[] a= str.split(":");
+		return new InetSocketAddress(a[0],Integer.parseInt(a[1]));
+	}
+
+	public Transaction(JSONObject jsonObject) throws JSONException {
+		txnId = jsonObject.getString(Keys.TXID.toString());
+		JSONArray ops = jsonObject.getJSONArray(Keys.OPS.toString());
+		requests = new ArrayList<>();
+		for (int i = 0; i < ops.length(); i++) {
 			requests.add(new NoopAppRequest((JSONObject) (ops.get(i))));
 		}
 		nodeId = jsonObject.getString(Keys.NODEID.toString());
-
-		}
+		requestId = jsonObject.getLong(Keys.REQUESTID.toString());
+		clientAddr = getSocketAddrFromString(jsonObject.getString(Keys.CLIENTADDR.toString()));
+		entryServer=getSocketAddrFromString(jsonObject.getString(Keys.ENTRYSERVER.toString()));
+	}
 
 }
 

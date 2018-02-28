@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import edu.umass.cs.gigapaxos.interfaces.*;
+import edu.umass.cs.nio.JSONMessenger;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
 import edu.umass.cs.nio.nioutils.NIOHeader;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
@@ -15,6 +16,7 @@ import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
 import edu.umass.cs.reconfiguration.examples.AppRequest;
+import edu.umass.cs.reconfiguration.reconfigurationpackets.ReplicableClientRequest;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.RequestActiveReplicas;
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
 
@@ -265,6 +267,11 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		try{
 			String str=new String(bytes, NIOHeader.CHARSET);
 			Request request=getRequestNew(str);
+			if(request instanceof TxClientRequest){
+				TxClientRequest t=(TxClientRequest) request;
+				t.clientAddr=header.sndr;
+				t.recvrAddr= header.rcvr;
+			}
 			return request;
 		}catch(Exception e){
 			e.printStackTrace();
@@ -282,9 +289,10 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	@Override
 	public boolean preExecuted(Request request) {
 		if(request==null){return false;}
-		if(request instanceof TxClientRequest){
-			Transaction transaction=new Transaction(this.getMessenger().getListeningSocketAddress(),
-					((TxClientRequest)request).getRequests(),(String) getMyID());
+		if(request instanceof TxClientRequest) {
+			TxClientRequest txClientRequest=(TxClientRequest)request;
+			Transaction transaction = new Transaction(txClientRequest.recvrAddr,
+					((TxClientRequest) request).getRequests(), (String) getMyID(),txClientRequest.clientAddr,txClientRequest.getRequestID());
 			try {
 					this.gpClient.sendRequest(new TXInitRequest(transaction));
 
@@ -292,7 +300,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 					throw new RuntimeException("Unable to send Transaction to Fixed Groups");
 				}
 			return true;
-			}
+		}
 
 //		FIXME: Minor Redundancy why is nodeID being stored both at the transaction
 //		FIXME: and inside the secondary transaction protocol
@@ -322,7 +330,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 
 		if(request instanceof UnlockRequest){
 			UnlockRequest unlockRequest=(UnlockRequest)request ;
-			boolean success=txLocker.lock(unlockRequest.getServiceName(),unlockRequest.txid);
+			boolean success=txLocker.unlock(unlockRequest.getServiceName(),unlockRequest.txid);
 			TXResult txResult= new TXResult(unlockRequest.txid,unlockRequest.getTXPacketType(),
 					success,(String) unlockRequest.getKey(),unlockRequest.getLockID());;
 			txResult.setRequestId(unlockRequest.getRequestID());
@@ -347,9 +355,19 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 
 		if(request instanceof TxStateRequest){
 		TransactionProtocolTask protocolTask=(TransactionProtocolTask) protocolExecutor.getTask(((TxStateRequest) request).getTXID());
+		if(protocolTask instanceof TxCommitProtocolTask){
+			Transaction transaction=protocolTask.getTransaction();
+			try {
+				System.out.println("Sending completed message");
+				((JSONMessenger) this.getMessenger()).sendClient(transaction.clientAddr, new TxClientResult(transaction.requestId, true), transaction.entryServer);
+			}
+			catch(JSONException|IOException e){
+				System.out.println("Message sending failed");
+			}
+			}
 		ProtocolTask newProtocolTask=protocolTask.onStateChange((TxStateRequest) request);
 		protocolExecutor.remove((String)protocolTask.getKey());
-		protocolExecutor.spawn(newProtocolTask);
+		if(newProtocolTask!=null)protocolExecutor.spawn(newProtocolTask);
 		return true;
 		}
 

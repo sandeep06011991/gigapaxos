@@ -43,6 +43,9 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
     @Override
     public TransactionProtocolTask onStateChange(TxStateRequest request) {
         TxState newState=request.getState();
+        if(newState == TxState.COMPLETE){
+            return null;
+        }
         if((state != TxState.INIT ) && (newState !=state)){
            throw new RuntimeException("SAFETY VOILATION");
         }

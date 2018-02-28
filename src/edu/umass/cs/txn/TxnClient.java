@@ -5,17 +5,12 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Set;
 
-import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
+import edu.umass.cs.gigapaxos.interfaces.*;
 import edu.umass.cs.reconfiguration.examples.AppRequest;
 import edu.umass.cs.reconfiguration.examples.NoopAppClient;
 import edu.umass.cs.txn.interfaces.TxOp;
-import edu.umass.cs.txn.txpackets.TXInitRequest;
-import edu.umass.cs.txn.txpackets.TxClientRequest;
-import edu.umass.cs.txn.txpackets.TxOpRequest;
+import edu.umass.cs.txn.txpackets.*;
 import org.json.JSONException;
-import edu.umass.cs.gigapaxos.interfaces.AppRequestParserBytes;
-import edu.umass.cs.gigapaxos.interfaces.Request;
-import edu.umass.cs.gigapaxos.interfaces.RequestCallback;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
 import edu.umass.cs.nio.nioutils.NIOHeader;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
@@ -24,13 +19,14 @@ import edu.umass.cs.reconfiguration.reconfigurationpackets.ActiveReplicaError;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.CreateServiceName;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.ReplicableClientRequest;
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
+import org.json.JSONObject;
 import redis.clients.jedis.Client;
 
 /**
  * @author arun
  *
  */
-public class TxnClient extends ReconfigurableAppClientAsync<Request> implements AppRequestParserBytes{
+public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
     private int numResponses = 0;
 
@@ -69,10 +65,14 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> implements 
                                 AppRequest.PacketType.DEFAULT_APP_REQUEST,
                                 false));
                         TxClientRequest txClientRequest=new TxClientRequest(requests);
+                        System.out.println(txClientRequest.getRequestID()+"reID");
 
                         sendRequest(txClientRequest,entryServer, new RequestCallback() {
                             @Override
                             public void handleResponse(Request response) {
+                                if(response instanceof TxClientResult){
+                                    System.out.println(("Transaction status"+((TxClientResult) response).success));
+                                }
                                 System.out.print("Delivered");
                             }
 
@@ -89,23 +89,27 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> implements 
     @Override
     public Request getRequest(String stringified) {
         try {
+            JSONObject jsonObject=new JSONObject(stringified);
+            if(jsonObject.getInt("type")==262){
+                return new TxClientResult(jsonObject);
+            }
             return NoopApp.staticGetRequest(stringified);
-        } catch (RequestParseException | JSONException e) {
+        } catch ( JSONException|RequestParseException e) {
             // do nothing by design
         }
+
+
         return null;
     }
 
-    @Override
-    public Request getRequest(byte[] message, NIOHeader header)
-            throws RequestParseException {
-        return NoopApp.staticGetRequest(message, header);
-    }
+
 
 
     @Override
     public Set<IntegerPacketType> getRequestTypes() {
-        return NoopApp.staticGetRequestTypes();
+        Set<IntegerPacketType> a= NoopApp.staticGetRequestTypes();
+        a.add(TXPacket.PacketType.TX_CLIENT_RESPONSE);
+        return a;
     }
 
     /**
@@ -117,8 +121,14 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> implements 
      * @param args
      * @throws IOException
      */
-    public static void main(String[] args) throws IOException {
+
+    public static void main(String args[]) throws  IOException{
+        function();
+    }
+
+    public static void function() throws IOException {
         client = new TxnClient ();
+
         final int numNames = 1;
         final int numReqs = 1;
         String namePrefix = "Service_name_txn";
@@ -131,12 +141,9 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> implements 
         }
         for (int i = 0; i < numNames; i++) {
             final String name = namePrefix;
-//            client.testSendBunchOfRequests(name,1);
-//                    + ((int) (Math.random() * Integer.MAX_VALUE));
-//            System.out.println("Creating name " + name);
+
             client.sendRequest(new CreateServiceName(name, initialState),
                     new RequestCallback() {
-
                         @Override
                         public void handleResponse(Request response) {
                             try {

@@ -11,6 +11,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -18,6 +19,10 @@ public class TxClientRequest extends JSONPacket implements ClientRequest{
 
     private ArrayList<ClientRequest> requests;
     private final long requestId;
+
+    public InetSocketAddress clientAddr;
+
+    public InetSocketAddress recvrAddr;
 
     static Random random=new Random();
     private enum Keys {

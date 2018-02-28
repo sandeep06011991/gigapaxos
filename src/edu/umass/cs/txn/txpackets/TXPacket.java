@@ -70,7 +70,9 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 
 		TX_TAKEOVER(260),
 
-		TX_CLIENT(261)
+		TX_CLIENT(261),
+
+		TX_CLIENT_RESPONSE(262)
 		;
 
 		private final int number;

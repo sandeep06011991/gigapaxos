@@ -5,5 +5,7 @@ public enum TxState {
 
     ABORTED,
 
+    COMPLETE,
+
     COMMITTED;
 }
