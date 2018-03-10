@@ -6,7 +6,7 @@ server:
 	rm -rf reconfiguration_DB/*
 	./bin/gpServer.sh stop all
 	ant
-	./bin/gpServer.sh start all
+	./bin/gpServer.sh -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties start all
 
 serverd:
 	ant

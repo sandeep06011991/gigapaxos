@@ -3,9 +3,6 @@ package edu.umass.cs.txn.txpackets;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import edu.umass.cs.txn.Transaction;
-
-import java.util.Random;
 
 /**
  * @author arun
@@ -14,15 +11,15 @@ import java.util.Random;
 public class LockRequest extends TXPacket {
 
 	private static enum Keys {
-		LOCKID, TXID
+		SERVICENAME, TXID
 	};
 
-	private final String lockID;
+	private final String serviceName;
 
 
-	public LockRequest(String lockId,String txId){
+	public LockRequest(String serviceName ,String txId){
 		super(PacketType.LOCK_REQUEST,txId);
-		this.lockID=lockId;
+		this.serviceName = serviceName;
 	}
 	/**
 	 * @param json
@@ -30,30 +27,29 @@ public class LockRequest extends TXPacket {
 	 */
 	public LockRequest(JSONObject json) throws JSONException {
 		super(json);
-		this.lockID = json.getString(Keys.LOCKID.toString());
+		this.serviceName = json.getString(Keys.SERVICENAME.toString());
 	}
 
 	public JSONObject toJSONObject() throws JSONException{
 		JSONObject jsonObject=super.toJSONObject();
-		jsonObject.put(Keys.LOCKID.toString(),lockID);
+		jsonObject.put(Keys.SERVICENAME.toString(),serviceName);
 		return jsonObject;
 	}
 	/**
-	 * @return Service name that also acts as a lock ID.
+	 * @return Transaction id is the identification of
+	 *
 	 */
 	public String getLockID() {
-		return this.lockID;
+		return this.txid;
 	}
 
 	public String getServiceName() {
-		return this.getLockID();
+		return this.serviceName;
 	}
-
 
 	@Override
 	public Object getKey() {
 		return txid;
 	}
-
 
 }

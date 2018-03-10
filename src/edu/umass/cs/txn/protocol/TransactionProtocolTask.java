@@ -58,11 +58,14 @@ abstract public class TransactionProtocolTask<NodeIDType> implements
         return ret;
     }
 
+    // Returns the protocol task that must be spawned in place of the current protocol task
+//    when state change request is recieved
     public abstract TransactionProtocolTask onStateChange(TxStateRequest request);
 
     public abstract TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary);
 
     public void cancel(){
+//        FIXME: Is there a better way to cancel a task
         protocolExecutor.remove(this.getKey());
     }
 }

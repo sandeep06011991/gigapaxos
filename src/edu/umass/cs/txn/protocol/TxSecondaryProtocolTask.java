@@ -44,6 +44,7 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
     public TransactionProtocolTask onStateChange(TxStateRequest request) {
         TxState newState=request.getState();
         if(newState == TxState.COMPLETE){
+            System.out.println("Everything done ");
             return null;
         }
         if((state != TxState.INIT ) && (newState !=state)){

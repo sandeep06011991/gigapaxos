@@ -26,4 +26,6 @@ public interface TXLocker {
 	public boolean	isLocked(String lockID);
 
 	public boolean unlock(String serviceName,String lockID) ;
+
+	public boolean isLockedByTxn(String serviceName, String txId);
 }

@@ -5,19 +5,18 @@ import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.gigapaxos.interfaces.RequestCallback;
 import edu.umass.cs.nio.AbstractPacketDemultiplexer;
 import edu.umass.cs.nio.GenericMessagingTask;
+import edu.umass.cs.nio.JSONMessenger;
 import edu.umass.cs.nio.SSLDataProcessingWorker;
 import edu.umass.cs.nio.interfaces.Messenger;
 import edu.umass.cs.nio.interfaces.NodeConfig;
-import edu.umass.cs.protocoltask.ProtocolEvent;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
 import edu.umass.cs.txn.txpackets.TXPacket;
 import edu.umass.cs.txn.txpackets.TXTakeover;
-import edu.umass.cs.txn.txpackets.TxOpRequest;
+import edu.umass.cs.txn.txpackets.TxClientResult;
 import org.json.JSONException;
 
-import javax.xml.soap.Node;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
@@ -37,11 +36,23 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
         this.gpClient = gpClient;
         this.abstractReplicaCoordinator=abstractReplicaCoordinator;
     }
-    public void sendObject(Object message){
+    public void sendObject(Object message) {
         try {
             if(message instanceof TXTakeover){
                 ((TXTakeover) message).setNewLeader((String)getMyID());
             }
+            if(message instanceof TxClientResult){
+                TxClientResult txClientResult = (TxClientResult) message;
+                try {
+                    ((JSONMessenger) (this.abstractReplicaCoordinator.getMessenger())).sendClient(txClientResult.getClientAddr()
+                            , txClientResult, txClientResult.getServerAddr());
+                }catch(JSONException ex){
+                    throw new RuntimeException("Failed to send Response to client");
+                }
+
+                return;
+            }
+
             this.gpClient.sendRequest((Request) message, new RequestCallback() {
                 @Override
 

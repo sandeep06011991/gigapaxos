@@ -25,8 +25,11 @@ public  class TxCommitProtocolTask<NodeIDType> extends
 
     @Override
     public TransactionProtocolTask onStateChange(TxStateRequest request) {
-//        No new protocol to spawned on state change
-      return null;
+        if(request.getState() == TxState.COMPLETE){
+            System.out.println("Commit Sequence complete");
+            return null;
+        }
+      throw new RuntimeException("To change state from Commit is a safety violation");
     }
 
     @Override
@@ -62,7 +65,7 @@ public  class TxCommitProtocolTask<NodeIDType> extends
         ArrayList<Request> requests=new ArrayList<>();
         for (String t : awaitingUnLock) {
 //          Low Priority: cleaner method exists
-            UnlockRequest unlockRequest= new UnlockRequest(t, transaction.getTXID());
+            UnlockRequest unlockRequest= new UnlockRequest(t, transaction.getTXID(),true);
             requests.add(unlockRequest);
 
         }

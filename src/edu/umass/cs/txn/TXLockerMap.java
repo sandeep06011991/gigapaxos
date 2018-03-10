@@ -34,10 +34,17 @@ public class TXLockerMap implements TXLocker {
 //	<Service name , State string>
 	private HashMap<String,String> stateMap=new HashMap<>();
 //	FIXME: Get clearance from Arun
+//	FIXME: More than one request possible, make this a HashSet<Long>
+//	<Service name, request ID>
+//	request ID is added to this list after recieving a valid request
 	private HashMap<String,Long> allowedRequests = new HashMap<>();
 
 	@Override
 	public boolean lock(String serviceName,String lockID){
+		if(txMap.containsKey(serviceName)){
+			String currlockId=txMap.get(serviceName);
+			return currlockId.equals(lockID);
+		}
 		if(!(txMap.containsKey(serviceName))){
 			String state=app.checkpoint(serviceName);
 			txMap.put(serviceName,lockID);
@@ -69,10 +76,15 @@ public class TXLockerMap implements TXLocker {
 		}
 		return false;
 	}
-
+/* Returns
+* 	handled: false if this is a new request
+* 	and true if the request is already handled
+*/
 	public boolean allowRequest(long requestId,String txID,String serviceName){
 		if(txMap.containsKey(serviceName) && txMap.get(serviceName).equals(txID)){
-			allowedRequests.put(serviceName,new Long(requestId));
+			if(!allowedRequests.containsKey(serviceName)){
+				allowedRequests.put(serviceName,new Long(requestId));
+			}
 			return true;
 		}
 		return false;
@@ -88,10 +100,20 @@ public class TXLockerMap implements TXLocker {
 		return false;
 	}
 
-
+	/*Is the service name locked by any transaction
+	* used to filter incoming requests */
 	public boolean isLocked(String serviceName){
 		if(txMap.containsKey(serviceName)){
 			return true;
+		}
+		return false;
+	}
+
+	/*Is this */
+	public boolean isLockedByTxn(String serviceName, String txId){
+		if(txMap.containsKey(serviceName)){
+			String _txId=txMap.get(serviceName);
+			return txId.equals(_txId);
 		}
 		return false;
 	}

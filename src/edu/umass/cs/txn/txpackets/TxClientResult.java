@@ -8,17 +8,25 @@ import edu.umass.cs.nio.interfaces.IntegerPacketType;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.net.InetSocketAddress;
+
 public class TxClientResult extends JSONPacket implements Request,RequestIdentifier,ClientRequest {
 
     public boolean success;
 
     long requestId;
 
-    public TxClientResult(long requestId,boolean success){
+    InetSocketAddress serverAddr;
+    InetSocketAddress clientAddr;
+
+    public TxClientResult(long requestId,boolean success,InetSocketAddress serverAddr,InetSocketAddress clientAddr){
         super(TXPacket.PacketType.TX_CLIENT_RESPONSE);
         this.requestId = requestId;
         this.success = success;
+        this.serverAddr = serverAddr;
+        this.clientAddr = clientAddr;
     }
+
 
 
     public TxClientResult(JSONObject json) throws JSONException {
@@ -60,5 +68,13 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
     @Override
     public ClientRequest getResponse() {
         throw new RuntimeException("Unncessary ");
+    }
+
+    public InetSocketAddress getClientAddr() {
+        return clientAddr;
+    }
+
+    public InetSocketAddress getServerAddr() {
+        return serverAddr;
     }
 }

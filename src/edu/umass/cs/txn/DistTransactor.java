@@ -240,7 +240,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 				case LOCK_REQUEST:
 					return new LockRequest(jsonObject);
 				case TX_OP_REQUEST:
-					return new TxOpRequest(jsonObject);
+					return new TxOpRequest(jsonObject,this.getCoordinator());
 				case UNLOCK_REQUEST:
 					return new UnlockRequest(jsonObject);
 				case RESULT:
@@ -293,6 +293,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			TxClientRequest txClientRequest=(TxClientRequest)request;
 			Transaction transaction = new Transaction(txClientRequest.recvrAddr,
 					((TxClientRequest) request).getRequests(), (String) getMyID(),txClientRequest.clientAddr,txClientRequest.getRequestID());
+
 			try {
 					this.gpClient.sendRequest(new TXInitRequest(transaction));
 
@@ -322,7 +323,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			boolean success=txLocker.lock(lockRequest.getServiceName(),lockRequest.txid);
 			TXResult result=
 					new TXResult(lockRequest.txid,lockRequest.getTXPacketType(),
-							success,(String) lockRequest.getKey(),lockRequest.getLockID());
+							success,(String) lockRequest.getKey(),lockRequest.getServiceName());
 			result.setRequestId(lockRequest.getRequestID());
 			lockRequest.response=result;
 			return true;
@@ -330,11 +331,16 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 
 		if(request instanceof UnlockRequest){
 			UnlockRequest unlockRequest=(UnlockRequest)request ;
-			boolean success=txLocker.unlock(unlockRequest.getServiceName(),unlockRequest.txid);
+			boolean success=false;
+			if(txLocker.isLockedByTxn(unlockRequest.getServiceName(),unlockRequest.getLockID())){
+				success=txLocker.unlock(unlockRequest.getServiceName(),unlockRequest.txid);
+			}
 			TXResult txResult= new TXResult(unlockRequest.txid,unlockRequest.getTXPacketType(),
-					success,(String) unlockRequest.getKey(),unlockRequest.getLockID());;
+					success,(String) unlockRequest.getKey(),unlockRequest.getServiceName());;
 			txResult.setRequestId(unlockRequest.getRequestID());
 			unlockRequest.response=txResult;
+/*If 2 unlock requests where sent by the same co-ordinator and response is reordered
+* it would wait for one of the 2 responses */
 			return true;
 		}
 
@@ -343,8 +349,8 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			TxOpRequest txOpRequest=(TxOpRequest) request;
 			boolean success=txLocker.isLocked(txOpRequest.getServiceName());
 			if(success){
-				txLocker.allowRequest(txOpRequest.request.getRequestID(),txOpRequest.txid,txOpRequest.getServiceName());
-				this.execute(txOpRequest.request,true,null);
+				boolean handled=txLocker.allowRequest(txOpRequest.request.getRequestID(),txOpRequest.txid,txOpRequest.getServiceName());
+				if(!handled) this.execute(txOpRequest.request,true,null);
 			}
 			TXResult result=new TXResult(txOpRequest.txid,txOpRequest.getTXPacketType(),success
 							,(String) txOpRequest.getKey(),Integer.toString(txOpRequest.opId));
@@ -354,21 +360,11 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			}
 
 		if(request instanceof TxStateRequest){
-		TransactionProtocolTask protocolTask=(TransactionProtocolTask) protocolExecutor.getTask(((TxStateRequest) request).getTXID());
-		if(protocolTask instanceof TxCommitProtocolTask){
-			Transaction transaction=protocolTask.getTransaction();
-			try {
-				System.out.println("Sending completed message");
-				((JSONMessenger) this.getMessenger()).sendClient(transaction.clientAddr, new TxClientResult(transaction.requestId, true), transaction.entryServer);
-			}
-			catch(JSONException|IOException e){
-				System.out.println("Message sending failed");
-			}
-			}
-		ProtocolTask newProtocolTask=protocolTask.onStateChange((TxStateRequest) request);
-		protocolExecutor.remove((String)protocolTask.getKey());
-		if(newProtocolTask!=null)protocolExecutor.spawn(newProtocolTask);
-		return true;
+			TransactionProtocolTask protocolTask=(TransactionProtocolTask) protocolExecutor.getTask(((TxStateRequest) request).getTXID());
+			ProtocolTask newProtocolTask=protocolTask.onStateChange((TxStateRequest) request);
+			protocolExecutor.remove((String)protocolTask.getKey());
+			if(newProtocolTask!=null)protocolExecutor.spawn(newProtocolTask);
+			return true;
 		}
 
 		if(request instanceof TXTakeover){
@@ -384,6 +380,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			if(txLocker.isAllowedRequest((ClientRequest) request)){
 				return false;
 			}
+//			FixMe: Can do some Exception handling here
 			System.out.println("DROPPING REQUEST. SYSTEM BUSY");
 			return true;
 		}

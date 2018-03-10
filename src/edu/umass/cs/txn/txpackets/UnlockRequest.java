@@ -13,22 +13,25 @@ import org.json.JSONObject;
 public class UnlockRequest extends TXPacket {
 
 	private static enum Keys {
-		UNLOCKID, TXID
+		SERVICENAME , TXID, COMMIT
 	};
 
-	private final String lockID;
+	private final String serviceName;
 	private final String txID;
+	private final boolean  commit;
 
-	public UnlockRequest(String lockID, String txID) {
+	public UnlockRequest(String serviceName, String txID,boolean commit) {
 		super(TXPacket.PacketType.UNLOCK_REQUEST, txID);
-		this.lockID = lockID;
+		this.serviceName = serviceName;
 		this.txID = txID;
+		this.commit = commit;
 	}
 
 	public UnlockRequest(JSONObject json) throws JSONException {
 		super(json);
-		this.lockID = json.getString(Keys.UNLOCKID.toString());
+		this.serviceName = json.getString(Keys.SERVICENAME.toString());
 		this.txID = json.getString(Keys.TXID.toString());
+		this.commit = json.getBoolean(Keys.COMMIT.toString());
 	}
 
 	public String getTXID() {
@@ -37,18 +40,19 @@ public class UnlockRequest extends TXPacket {
 
 	public JSONObject toJSONObject() throws JSONException{
 		JSONObject jsonObject=super.toJSONObject();
-		jsonObject.put(Keys.UNLOCKID.toString(),this.lockID);
+		jsonObject.put(Keys.SERVICENAME.toString(),this.serviceName);
+		jsonObject.put(Keys.COMMIT.toString(),this.commit);
 		return jsonObject;
 
 	}
 
 
 	public String getLockID() {
-		return this.lockID;
+		return this.txID;
 	}
 
 	public String getServiceName() {
-		return this.getLockID();
+		return this.serviceName;
 	}
 
 	@Override
@@ -61,4 +65,7 @@ public class UnlockRequest extends TXPacket {
 		return txid;
 	}
 
+	public boolean isCommited() {
+		return commit;
+	}
 }

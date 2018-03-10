@@ -18,7 +18,7 @@ import java.util.Set;
 
 public class TxExecuteProtocolTask<NodeIDType>
         extends TransactionProtocolTask<NodeIDType> {
-// FixMe: Build a more efficient Retry mechanism
+    // FixMe: Build a more efficient Retry mechanism
     ArrayList<String> sent=new ArrayList<>();
 
     public TxExecuteProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor)
@@ -31,7 +31,8 @@ public class TxExecuteProtocolTask<NodeIDType>
         if(request.getState()== TxState.COMMITTED){
             return new TxCommitProtocolTask(transaction,protocolExecutor);
         }else{
-            throw new RuntimeException("Abort Unimplemented");
+            assert request.getState() == TxState.ABORTED;
+            return new TxAbortProtocolTask(transaction,protocolExecutor);
         }
     }
 

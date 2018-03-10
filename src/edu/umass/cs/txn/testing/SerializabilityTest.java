@@ -21,7 +21,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class SerializabilityTest extends DefaultTest {
-
+/* FIXME: Target test 1: How many requests are needed to get requests to
+* start failing */
     private static HashMap<String,InetSocketAddress> activesMap;
     private static HashMap<String,InetSocketAddress> reconfMap;
     static{

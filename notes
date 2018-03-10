@@ -1,8 +1,24 @@
 Question
 
+FEATURES TO BUILD
+4. Abort and rollback the transaction (LONG)
+5. Checkpoint and restore (OK)
+6.5 Test abort sequence
+6. Run test for NOOP transactions
+7. Fixed Groups part <RELATIVELY EASY>
+8. Transactional Creates
 
-3. Rewire recieve and response from a client.
-4. Abort and rollback the transaction.
+TEST EVERYTHING
+9. Transactional Deletes
+10. Start running experiments to get results
+
+
+Things to write about
+1. Complete Protocol Description
+2. Write trade of 90 %
+3. Write up about Trade off with networking 
+4.
+
 
 
 1. Fill up with Document after each level.

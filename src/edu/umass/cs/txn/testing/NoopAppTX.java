@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import edu.umass.cs.reconfiguration.ReconfigurationConfig;
 import org.json.JSONException;
@@ -103,6 +104,11 @@ public class NoopAppTX extends AbstractReconfigurablePaxosApp<String> implements
 		default:
 			// everything else is an absolute no-op
 			break;
+		}
+		try {
+//			TimeUnit.SECONDS.sleep(30);
+		}catch(Exception ex){
+			// Silent kill
 		}
 		return false;
 	}

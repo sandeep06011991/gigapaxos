@@ -14,21 +14,28 @@ import java.util.*;
 public class TxLockProtocolTask<NodeIDType> extends
         TransactionProtocolTask<NodeIDType>{
 
+//    The lock protocol has 3 options to transition into
+//    1) AbortProtocol: If the locks could not be acquired
+//    2) Execute Protocol: If the locks could be acquired
+//    3) onTakeOver: If a secondary timesout
+
 
     TreeSet<String> awaitingLock;
 
     public TxLockProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor)
     {
         super(transaction,protocolExecutor);
+        awaitingLock = transaction.getLockList();
     }
 
     @Override
     public TransactionProtocolTask onStateChange(TxStateRequest request) {
-        if(request.getState()== TxState.COMMITTED){
-            return new TxCommitProtocolTask(transaction,getProtocolExecutor());
-        }else{
-            throw new RuntimeException("Abort Unimplemented");
+        if(request.getState() == TxState.ABORTED){
+//            This would have been started by the same primary
+//            if the primary had changed, there would be a take over message in between
+            return new TxAbortProtocolTask(transaction,protocolExecutor);
         }
+        throw new RuntimeException("Safety Violation");
     }
 
     @Override
@@ -45,7 +52,12 @@ public class TxLockProtocolTask<NodeIDType> extends
                 &&(((TXResult) event).opPacketType==TXPacket.PacketType.LOCK_REQUEST)){
             TXResult txResult=(TXResult)event;
             String opId=txResult.getOpId();
-//FIXME: Is there a better way to map lock opId to Lock requests
+            //FIXME: Is there a better way to map lock opId to Lock requests
+            if(txResult.isFailed()){
+                TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(),TxState.ABORTED);
+                System.out.println("Locks"  +   txResult.getOpId()+  " must be busy");
+                return getMessageTask(stateRequest);
+            }
             if(awaitingLock.remove(opId)){
                 System.out.println("Lock "+opId +" "+txResult.isFailed());
             }
@@ -60,9 +72,6 @@ public class TxLockProtocolTask<NodeIDType> extends
 
     @Override
     public GenericMessagingTask<NodeIDType,?>[] start() {
-        if(awaitingLock==null){
-            awaitingLock = transaction.getLockList();
-        }
         ArrayList<Request> requests=new ArrayList<>();
         for (String t : awaitingLock) {
 //          Low Priority: cleaner method exists

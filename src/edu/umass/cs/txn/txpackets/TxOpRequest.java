@@ -1,6 +1,8 @@
 package edu.umass.cs.txn.txpackets;
 
 import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
+import edu.umass.cs.nio.JSONPacket;
+import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.reconfiguration.examples.AppRequest;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -49,6 +51,7 @@ public class TxOpRequest extends TXPacket  {
 			throws JSONException, RequestParseException {
 //		FIXME App Request parser should be fixed
 		super(json);
+
 		this.request =(ClientRequest) parser
 				.getRequest(json.getString(Keys.REQUEST.toString()));
 		this.opId	 =  json.getInt(Keys.OPID.toString());
@@ -58,19 +61,25 @@ public class TxOpRequest extends TXPacket  {
 	@Override
 	public JSONObject toJSONObject() throws JSONException {
 		JSONObject jsonObject=super.toJSONObject();
-		if(request !=null){
-			jsonObject.put(Keys.REQUEST.toString(),((AppRequest)request).toJSONObject());
+
+		if((request !=null) && (request instanceof JSONPacket)){
+			jsonObject.put(Keys.REQUEST.toString(),((JSONPacket)request).toJSONObject());
+//			jsonObject.put(Keys.REQUEST.toString(),((AppRequest)request).toJSONObject());
+		}else{
+			throw new RuntimeException("TxOpRequests must be JSON objects");
 		}
 	 	jsonObject.put(Keys.OPID.toString(),opId);
 		return jsonObject;
 	}
 
 	public TxOpRequest(JSONObject jsonObject)throws JSONException{
-//		FIXME: Should not be App Specific
 		super(jsonObject);
-		JSONObject jsonObject1=jsonObject.getJSONObject(Keys.REQUEST.toString());
-		request=new AppRequest(jsonObject1);
-		this.opId	 =  jsonObject.getInt(Keys.OPID.toString());
+		throw new RuntimeException("Should not be called without parser");
+//		FIXME: Should not be App Specific
+//		super(jsonObject);
+//		JSONObject jsonObject1=jsonObject.getJSONObject(Keys.REQUEST.toString());
+//		request=new AppRequest(jsonObject1);
+//		this.opId	 =  jsonObject.getInt(Keys.OPID.toString());
 	}
 
 	public String getServiceName(){
