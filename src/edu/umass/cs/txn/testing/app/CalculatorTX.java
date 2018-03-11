@@ -13,10 +13,11 @@
  * the License.
  * 
  * Initial developer(s): V. Arun */
-package edu.umass.cs.txn.testing;
+package edu.umass.cs.txn.testing.app;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Array;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -40,35 +41,50 @@ import edu.umass.cs.reconfiguration.examples.AppRequest;
 import edu.umass.cs.reconfiguration.examples.AppRequest.ResponseCodes;
 import edu.umass.cs.reconfiguration.interfaces.Reconfigurable;
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
+import org.mapdb.TxEngine;
+import org.omg.SendingContext.RunTime;
 
 /**
- * @author V. Arun
+ * @author Sandeep
  * 
- *         A simple no-op application example.
+ *         A calculator application to test transactions
+ *         because 1*2+3 != 1*3+2
  */
-public class NoopAppTX extends AbstractReconfigurablePaxosApp<String> implements
+public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> implements
 		Replicable, Reconfigurable, ClientMessenger, AppRequestParserBytes {
 
-	private static final String DEFAULT_INIT_STATE = "";
+	private static final int DEFAULT_INIT_STATE = 0;
 	// total number of reconfigurations across all records
 	private int numReconfigurationsSinceRecovery = -1;
-	private boolean verbose = false;
+	private boolean verbose =true;
 
 	private class AppData {
 		final String name;
-		String state = DEFAULT_INIT_STATE;
+		int state = DEFAULT_INIT_STATE;
 
-		AppData(String name, String state) {
+		AppData(String name, int state) {
 			this.name = name;
 			this.state = state;
 		}
 
-		void setState(String state) {
+		void  setState(int state) {
 			this.state = state;
 		}
 
-		String getState() {
+		int getState() {
 			return this.state;
+		}
+
+		void operate(OperateRequest.Operation operation,int obj){
+			switch (operation){
+				case add:
+					state = state + obj;
+					break;
+				case multiply:
+					state = state *obj;
+					break;
+			}
+
 		}
 	}
 
@@ -83,7 +99,7 @@ public class NoopAppTX extends AbstractReconfigurablePaxosApp<String> implements
 	 * 
 	 * @param args
 	 */
-	public NoopAppTX(String[] args) {
+	public CalculatorTX(String[] args) {
 	}
 
 	// Need a messenger mainly to send back responses to the client.
@@ -95,86 +111,31 @@ public class NoopAppTX extends AbstractReconfigurablePaxosApp<String> implements
 
 	@Override
 	public boolean execute(Request request, boolean doNotReplyToClient) {
+
 		if (request.toString().equals(Request.NO_OP))
 			return true;
-		switch ((AppRequest.PacketType) (request.getRequestType())) {
-		case DEFAULT_APP_REQUEST:
-		case APP_REQUEST3:
-			return processRequest((AppRequest) request, doNotReplyToClient);
-		default:
-			// everything else is an absolute no-op
-			break;
+
+		if(request instanceof GetRequest){
+			GetRequest getRequest = (GetRequest)request;
+			String name= getRequest.getServiceName();
+			int res= appData.get(name).state;
+			getRequest.response = new ResultRequest(getRequest.getServiceName(),res,getRequest.requestID);
+			return true;
 		}
-		try {
-//			TimeUnit.SECONDS.sleep(30);
-		}catch(Exception ex){
-			// Silent kill
+		if(request instanceof OperateRequest){
+			OperateRequest operateRequest = (OperateRequest)request;
+			String name=operateRequest.getServiceName();
+			AppData ap=appData.get(name);
+			ap.operate(operateRequest.operation,operateRequest.object);
+			return true;
 		}
-		return false;
+
+		throw new RuntimeException("unimplemented");
 	}
 
 	private static final boolean DELEGATE_RESPONSE_MESSAGING = true;
 
-	private boolean processRequest(AppRequest request,
-			boolean doNotReplyToClient) {
-		if (request.getServiceName() == null)
-			return true; // no-op
-		if (request.isStop())
-			return processStopRequest(request);
-		AppData data = this.appData.get(request.getServiceName());
-		if (data == null) {
-			System.out.println("App-" + myID + " has no record for "
-					+ request.getServiceName() + " for " + request);
-			assert (request.getResponse() == null);
-			return false;
-		}
-		assert (data != null);
-		data.setState(request.getValue());
-		this.appData.put(request.getServiceName(), data);
-		if (verbose)
-			System.out.println("App-" + myID + " wrote to " + data.name
-					+ " with state " + data.getState());
-		if(request.getRequestType().equals(AppRequest.PacketType.APP_REQUEST3))
-			this.processTX(request);
-		if (DELEGATE_RESPONSE_MESSAGING)
-			this.sendResponse(request);
-		else
-			sendResponse(request, doNotReplyToClient);
-		return true;
-	}
 
-	private void processTX(AppRequest request) {
-		
-	}
-
-	/**
-	 * This method exemplifies one way of sending responses back to the client.
-	 * A cleaner way of sending a simple, single-message response back to the
-	 * client is to delegate it to the replica coordinator, as exemplified below
-	 * in {@link #sendResponse(AppRequest)} and supported by gigapaxos.
-	 * 
-	 * @param request
-	 * @param doNotReplyToClient
-	 */
-	private void sendResponse(AppRequest request, boolean doNotReplyToClient) {
-		assert (this.messenger != null && this.messenger.getClientMessenger() != null);
-		if (this.messenger == null || doNotReplyToClient)
-			return;
-
-		InetSocketAddress sockAddr = request.getSenderAddress();
-		try {
-			this.messenger.getClientMessenger().sendToAddress(sockAddr,
-					request.toJSONObject());
-		} catch (JSONException | IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void sendResponse(AppRequest request) {
-		// set to whatever response value is appropriate
-		request.setResponse(ResponseCodes.ACK.toString() + " "
-				+ numReconfigurationsSinceRecovery);
-	}
 
 	// no-op
 	private boolean processStopRequest(AppRequest request) {
@@ -202,10 +163,16 @@ public class NoopAppTX extends AbstractReconfigurablePaxosApp<String> implements
 	 */
 	public static Request staticGetRequest(String stringified)
 			throws RequestParseException, JSONException {
-		if (stringified.equals(Request.NO_OP)) {
-			return getNoopRequest();
+		JSONObject jsonObject = new JSONObject(stringified);
+		TxAppRequest.TxRequestType requestType= TxAppRequest.TxRequestType.getPacketTypeFromInt(jsonObject.getInt("type"));
+		switch(requestType){
+			case GET: return new GetRequest(jsonObject);
+			case PUT:return new PutRequest(jsonObject);
+			case RESULT:return new ResultRequest(jsonObject);
+			case OPERATE:return new OperateRequest(jsonObject);
+
 		}
-		return new AppRequest(new JSONObject(stringified));
+		throw new RuntimeException("Request could not be parsed");
 	}
 	
 	@Override
@@ -228,13 +195,7 @@ public class NoopAppTX extends AbstractReconfigurablePaxosApp<String> implements
 		}
 	}
 
-	/* This is a special no-op request unlike any other NoopAppRequest. */
-	private static Request getNoopRequest() {
-		return new AppRequest(null, 0, 0, Request.NO_OP,
-				AppRequest.PacketType.DEFAULT_APP_REQUEST, false);
-	}
-
-	private static AppRequest.PacketType[] types = AppRequest.PacketType.values();
+	private static IntegerPacketType[] types = TxAppRequest.TxRequestType.values();
 
 	@Override
 	public Set<IntegerPacketType> getRequestTypes() {
@@ -258,16 +219,22 @@ public class NoopAppTX extends AbstractReconfigurablePaxosApp<String> implements
 	@Override
 	public String checkpoint(String name) {
 		AppData data = this.appData.get(name);
-		return data != null ? data.getState() : null;
+		return data != null ? String.valueOf(data.getState()) : null;
 	}
 
 	@Override
 	public boolean restore(String name, String state) {
 		AppData data = this.appData.get(name);
+		int number;
+		try{
+			number = Integer.parseInt(state);
+		}catch(NumberFormatException nfe){
+			number = 0;
+		}
 
 		// if no previous state, this is a creation epoch.
 		if (data == null && state != null) {
-			data = new AppData(name, state);
+			data = new AppData(name, number);
 			if (verbose)
 				System.out.println(">>>App-" + myID + " creating " + name
 						+ " with state " + state);
@@ -286,7 +253,7 @@ public class NoopAppTX extends AbstractReconfigurablePaxosApp<String> implements
 		else if (data != null && state != null) {
 			System.out.println("App-" + myID + " updating " + name
 					+ " with state " + state);
-			data.state = state;
+			data.state = number;
 		} 
 		else
 			// do nothing when data==null && state==null
@@ -298,6 +265,6 @@ public class NoopAppTX extends AbstractReconfigurablePaxosApp<String> implements
 	}
 
 	public String toString() {
-		return NoopAppTX.class.getSimpleName();
+		return CalculatorTX.class.getSimpleName();
 	}
 }

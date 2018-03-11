@@ -15,11 +15,11 @@ serverd:
 	rm -rf reconfiguration_DB/*
 	./bin/gpServer.sh stop all
 	ant
-	./bin/gpServer.sh -debug start all
+	./bin/gpServer.sh -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties -debug start all
 
 
 client:
-	./bin/gpClient.sh edu.umass.cs.txn.TxnClient
+	./bin/gpClient.sh edu.umass.cs.txn.testing.TxnClient
 
 kill:
 	ps | grep java | awk 'BEGIN {}{print $$1}' | xargs  kill -9
