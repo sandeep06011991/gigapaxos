@@ -27,15 +27,15 @@ public class TxOpRequest extends TXPacket  {
 	public ClientRequest request;
 
 
-	public int opId=-10000;
+	public long opId=-10000;
 	/**
 	 * @param txid
 	 * @param request
 	 */
-	public TxOpRequest(String txid, ClientRequest request,int opId) {
+	public TxOpRequest(String txid, ClientRequest request) {
 		super(TXPacket.PacketType.TX_OP_REQUEST, txid);
 		this.request = request;
-		this.opId = opId;
+		this.opId = request.getRequestID();
 	}
 
 	/**
@@ -54,7 +54,7 @@ public class TxOpRequest extends TXPacket  {
 
 		this.request =(ClientRequest) parser
 				.getRequest(json.getString(Keys.REQUEST.toString()));
-		this.opId	 =  json.getInt(Keys.OPID.toString());
+		this.opId	 =  json.getLong(Keys.OPID.toString());
 	}
 
 
@@ -70,16 +70,6 @@ public class TxOpRequest extends TXPacket  {
 		}
 	 	jsonObject.put(Keys.OPID.toString(),opId);
 		return jsonObject;
-	}
-
-	public TxOpRequest(JSONObject jsonObject)throws JSONException{
-		super(jsonObject);
-		throw new RuntimeException("Should not be called without parser");
-//		FIXME: Should not be App Specific
-//		super(jsonObject);
-//		JSONObject jsonObject1=jsonObject.getJSONObject(Keys.REQUEST.toString());
-//		request=new AppRequest(jsonObject1);
-//		this.opId	 =  jsonObject.getInt(Keys.OPID.toString());
 	}
 
 	public String getServiceName(){

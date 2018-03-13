@@ -1,19 +1,19 @@
 
 server:
+	./bin/gpServer.sh stop all
 	ant
 	rm -f tmp/*
 	rm -rf paxos_logs/*
 	rm -rf reconfiguration_DB/*
-	./bin/gpServer.sh stop all
 	ant
 	./bin/gpServer.sh -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties start all
 
 serverd:
+	./bin/gpServer.sh stop all
 	ant
 	rm -f tmp/*
 	rm -rf paxos_logs/*
 	rm -rf reconfiguration_DB/*
-	./bin/gpServer.sh stop all
 	ant
 	./bin/gpServer.sh -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties -debug start all
 

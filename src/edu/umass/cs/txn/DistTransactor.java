@@ -353,7 +353,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 				if(!handled) this.execute(txOpRequest.request,true,null);
 			}
 			TXResult result=new TXResult(txOpRequest.txid,txOpRequest.getTXPacketType(),success
-							,(String) txOpRequest.getKey(),Integer.toString(txOpRequest.opId));
+							,(String) txOpRequest.getKey(),Long.toString(txOpRequest.opId));
 			result.setRequestId(txOpRequest.getRequestID());
 			txOpRequest.response=result;
 			return true;

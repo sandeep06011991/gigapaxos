@@ -13,17 +13,26 @@ import edu.umass.cs.txn.interfaces.TxOp;
 import edu.umass.cs.txn.txpackets.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
 public class TxExecuteProtocolTask<NodeIDType>
         extends TransactionProtocolTask<NodeIDType> {
     // FixMe: Build a more efficient Retry mechanism
-    ArrayList<String> sent=new ArrayList<>();
+//    ArrayList<String> sent=new ArrayList<>();
+//    Request Ids that are awaiting execution
+    ArrayList<Long> toExecuteRequests = new ArrayList<>();
+    HashMap<Long,ClientRequest> map = new HashMap<>();
 
     public TxExecuteProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor)
     {
         super(transaction,protocolExecutor);
+        for(Request r: transaction.getRequests()){
+//            FixME: This casting should not be required, change definition in transaction
+            toExecuteRequests.add(((ClientRequest)r).getRequestID());
+            map.put(((ClientRequest)r).getRequestID(),(ClientRequest) r);
+        }
     }
 
     @Override
@@ -49,30 +58,29 @@ public class TxExecuteProtocolTask<NodeIDType>
         if((event instanceof TXResult)&&(((TXResult) event).opPacketType==TXPacket.PacketType.TX_OP_REQUEST)){
             TXResult txResult=(TXResult)event;
             System.out.println("Recieved Operation"+txResult.getOpId());
-            sent.remove(txResult.getOpId());
-            if(sent.isEmpty()){
+            assert toExecuteRequests.get(0) == Long.parseLong(txResult.getOpId());
+            toExecuteRequests.remove(0);
+            if(toExecuteRequests.isEmpty()){
                 TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(),TxState.COMMITTED);
                 System.out.println("Execute Phase Complete");
                 return getMessageTask(stateRequest);
+            }else{
+                return sendPendingMessage();
             }
         }
         return null;
     }
 
+    private GenericMessagingTask<NodeIDType, ?>[] sendPendingMessage(){
+        assert toExecuteRequests.size() > 0;
+        Long rqId = toExecuteRequests.get(0);
+        ClientRequest toSend = map.get(rqId);
+        return  getMessageTask(new TxOpRequest(transaction.getTXID(),toSend));
+    }
+
     @Override
     public GenericMessagingTask<NodeIDType, ?>[] start() {
-//      Fix: right now only one request per service name.
-//      Easy to extend this, do it on light days
-        System.out.println("Execute initiated");
-//        ArrayList<Request> requests=transaction.getRequests();
-        ArrayList<TxOpRequest> txOps=new ArrayList<>();
-        int op=0;
-        for(ClientRequest request:transaction.getRequests()){
-            txOps.add(new TxOpRequest(transaction.getTXID(),request,op));
-            sent.add(Integer.toString(op));
-            op++;
-        }
-        return getMessageTask(txOps);
+        return sendPendingMessage();
     }
 
     @Override

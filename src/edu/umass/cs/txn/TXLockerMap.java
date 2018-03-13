@@ -8,6 +8,7 @@ import edu.umass.cs.txn.interfaces.TXLocker;
 import org.omg.SendingContext.RunTime;
 
 import java.util.HashMap;
+import java.util.HashSet;
 
 /**
  * @author arun
@@ -38,7 +39,7 @@ public class TXLockerMap implements TXLocker {
 //	FIXME: More than one request possible, make this a HashSet<Long>
 //	<Service name, request ID>
 //	request ID is added to this list after recieving a valid request
-	private HashMap<String,Long> allowedRequests = new HashMap<>();
+	private HashMap<String,HashSet<Long>> allowedRequests = new HashMap<>();
 
 	@Override
 	public boolean lock(String serviceName,String lockID){
@@ -80,14 +81,23 @@ public class TXLockerMap implements TXLocker {
 /* Returns
 * 	handled: false if this is a new request
 * 	and true if the request is already handled
+* 	FIXME: allowRequest should be a void not a boolean return
+*   should throw an exception when a repeated request is given
+*
 */
 	public boolean allowRequest(long requestId,String txID,String serviceName){
 		if(txMap.containsKey(serviceName) && txMap.get(serviceName).equals(txID)){
 			if(!allowedRequests.containsKey(serviceName)){
-				allowedRequests.put(serviceName,new Long(requestId));
+				HashSet set = new HashSet();
+				set.add(new Long(requestId));
+				allowedRequests.put(serviceName,set);
+				return false;
+			}else{
+				HashSet set= allowedRequests.get(serviceName);
+				if(set.contains(requestId)){return  true;}
+				set.add(requestId);
 				return false;
 			}
-			return true;
 		}
 		throw new RuntimeException("Only a locked group recieves TxOP request");
 	}
@@ -95,7 +105,7 @@ public class TXLockerMap implements TXLocker {
 	public boolean isAllowedRequest(ClientRequest clientRequest){
 		String serviceName=clientRequest.getServiceName();
 		if(!isLocked(serviceName)){return true;}
-		if(allowedRequests.containsKey(serviceName)&& allowedRequests.get(serviceName).longValue()==clientRequest.getRequestID()){
+		if(allowedRequests.containsKey(serviceName)&& allowedRequests.get(serviceName).contains(clientRequest.getRequestID())){
 			System.out.println("Request Is allowed");
 			return true;
 		}

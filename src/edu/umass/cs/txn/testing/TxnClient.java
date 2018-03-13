@@ -47,18 +47,54 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
     }
 
     void testGetRequest() throws IOException{
-        sendRequest(new GetRequest("name1"), new InetSocketAddress("127.0.0.1", 2100), new RequestCallback() {
+        sendRequest(new GetRequest("name0"), new InetSocketAddress("127.0.0.1", 2100), new RequestCallback() {
             @Override
             public void handleResponse(Request response) {
                 ResultRequest rr= (ResultRequest)response;
-                assert  rr.getResult() == 21;
+                System.out.println("Result :"+rr.getResult());
+                assert  rr.getResult() == 210;
                 System.out.println("Get Test complete");
 
             }
         });
     }
 
-    void testCommit(){
+
+    void testMultiLineTxn(){
+        createSomething();
+        InetSocketAddress entryServer=new InetSocketAddress("127.0.0.1",2100);
+        ArrayList<ClientRequest> requests = new ArrayList<>();
+        requests.add(new OperateRequest("name0", 10, OperateRequest.Operation.add));
+        requests.add(new OperateRequest("name0", 20, OperateRequest.Operation.multiply));
+        requests.add(new OperateRequest("name0", 10, OperateRequest.Operation.add));
+
+
+        try{
+            TxClientRequest txClientRequest = new TxClientRequest(requests);
+            RequestFuture rd= sendRequest(txClientRequest,entryServer, new RequestCallback() {
+                @Override
+                public void handleResponse(Request response) {
+                    if(response instanceof TxClientResult){
+                        try {
+                            System.out.println("Transaction status "+((TxClientResult) response).success);
+                            testGetRequest();
+                            System.out.println("Transaction test complete");
+                        }catch(Exception e){
+                            throw new RuntimeException("Transaction failed");
+                        }
+                    }
+                }
+            });
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+
+    }
+
+
+    void testBasicCommit(){
         createSomething();
         InetSocketAddress entryServer=new InetSocketAddress("127.0.0.1",2100);
         ArrayList<ClientRequest> requests = new ArrayList<>();
@@ -141,8 +177,8 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
     public static void main(String args[]) throws  IOException{
         createSomething();
 //        client.testGetRequest();
-        client.testCommit();
-
+//        client.testBasicCommit();
+          client.testMultiLineTxn();
     }
 
 
