@@ -46,13 +46,13 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
         created = true;
     }
 
-    void testGetRequest() throws IOException{
+    void testGetRequest(int finalValue) throws IOException{
         sendRequest(new GetRequest("name0"), new InetSocketAddress("127.0.0.1", 2100), new RequestCallback() {
             @Override
             public void handleResponse(Request response) {
                 ResultRequest rr= (ResultRequest)response;
                 System.out.println("Result :"+rr.getResult());
-                assert  rr.getResult() == 210;
+                assert  rr.getResult() == finalValue;
                 System.out.println("Get Test complete");
 
             }
@@ -77,7 +77,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
                     if(response instanceof TxClientResult){
                         try {
                             System.out.println("Transaction status "+((TxClientResult) response).success);
-                            testGetRequest();
+                            testGetRequest(210);
                             System.out.println("Transaction test complete");
                         }catch(Exception e){
                             throw new RuntimeException("Transaction failed");
@@ -93,37 +93,67 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
     }
 
-
-    void testBasicCommit(){
+    void testAborting() throws IOException{
         createSomething();
         InetSocketAddress entryServer=new InetSocketAddress("127.0.0.1",2100);
         ArrayList<ClientRequest> requests = new ArrayList<>();
         requests.add(new OperateRequest("name0", 10, OperateRequest.Operation.add));
         requests.add(new OperateRequest("name1", 20, OperateRequest.Operation.add));
+        TxClientRequest txClientRequest = new TxClientRequest(requests);
 
+        ArrayList<ClientRequest> requests1 = new ArrayList<>();
+        requests1.add(new GetRequest("name0"));
+        TxClientRequest txClientRequest1 = new TxClientRequest(requests1);
 
-        try{
-            TxClientRequest txClientRequest = new TxClientRequest(requests);
-            RequestFuture rd= sendRequest(txClientRequest,entryServer, new RequestCallback() {
-                @Override
-                public void handleResponse(Request response) {
-                    if(response instanceof TxClientResult){
-                        try {
-                            System.out.println("Transaction status "+((TxClientResult) response).success);
-                            testGetRequest();
-                            System.out.println("Transaction test complete");
-                        }catch(Exception e){
-                            throw new RuntimeException("Transaction failed");
-                        }
+        RequestFuture rd= sendRequest(txClientRequest,entryServer, new RequestCallback() {
+            @Override
+            public void handleResponse(Request response) {
+                if(response instanceof TxClientResult){
+                    try {
+                        System.out.println("Transaction status "+((TxClientResult) response).success);
+                        testGetRequest(10);
+                        System.out.println("Transaction test complete");
+                    }catch(Exception e){
+                        throw new RuntimeException("Transaction failed");
                     }
                 }
-             });
+            }
 
-        }catch (Exception e){
-            e.printStackTrace();
-        }
+        });
+
+        sendRequest(txClientRequest1, entryServer, new RequestCallback() {
+            @Override
+            public void handleResponse(Request response) {
+                assert response instanceof TxClientResult;
+                TxClientResult txClientResult=(TxClientResult)response;
+                System.out.println("Transaction 2 status"+txClientResult.success);
+            }
+        });
+    }
 
 
+
+    void testBasicCommit() throws IOException{
+        createSomething();
+        InetSocketAddress entryServer=new InetSocketAddress("127.0.0.1",2100);
+        ArrayList<ClientRequest> requests = new ArrayList<>();
+        requests.add(new OperateRequest("name0", 10, OperateRequest.Operation.add));
+        requests.add(new OperateRequest("name1", 20, OperateRequest.Operation.add));
+        TxClientRequest txClientRequest = new TxClientRequest(requests);
+        RequestFuture rd= sendRequest(txClientRequest,entryServer, new RequestCallback() {
+            @Override
+            public void handleResponse(Request response) {
+                if(response instanceof TxClientResult){
+                    try {
+                        System.out.println("Transaction status "+((TxClientResult) response).success);
+                        testGetRequest(10);
+                        System.out.println("Transaction test complete");
+                    }catch(Exception e){
+                        throw new RuntimeException("Transaction failed");
+                    }
+                }
+            }
+         });
     }
 
     /**
@@ -178,7 +208,8 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
         createSomething();
 //        client.testGetRequest();
 //        client.testBasicCommit();
-          client.testMultiLineTxn();
+//          client.testMultiLineTxn();
+          client.testAborting();
     }
 
 
