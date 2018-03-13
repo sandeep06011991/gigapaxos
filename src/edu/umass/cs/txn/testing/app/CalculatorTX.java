@@ -84,6 +84,7 @@ public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> impleme
 					state = state *obj;
 					break;
 			}
+			System.out.println("Final State:"+name+"	"+state);
 
 		}
 	}
@@ -116,6 +117,7 @@ public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> impleme
 			return true;
 
 		if(request instanceof GetRequest){
+			System.out.println("processing get request");
 			GetRequest getRequest = (GetRequest)request;
 			String name= getRequest.getServiceName();
 			int res= appData.get(name).state;

@@ -1,5 +1,6 @@
 package edu.umass.cs.txn.protocol;
 
+import com.sun.org.apache.regexp.internal.RE;
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.nio.GenericMessagingTask;
 import edu.umass.cs.nio.JSONMessenger;
@@ -26,6 +27,7 @@ public  class TxCommitProtocolTask<NodeIDType> extends
     @Override
     public TransactionProtocolTask onStateChange(TxStateRequest request) {
         if(request.getState() == TxState.COMPLETE){
+
             System.out.println("Commit Sequence complete");
             return null;
         }
@@ -50,8 +52,12 @@ public  class TxCommitProtocolTask<NodeIDType> extends
             }
             if(awaitingUnLock.isEmpty()){
                 System.out.println("All unlocks recieved");
+                ArrayList<Request> re= new ArrayList<>();
                 TxStateRequest request=new TxStateRequest(transaction.getTXID(),TxState.COMPLETE);
-                return getMessageTask(request);
+                TxClientResult response = new TxClientResult(transaction,true);
+                re.add(request);
+                re.add(response);
+                return getMessageTask(re);
             }
 
         }

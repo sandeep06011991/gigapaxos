@@ -1,12 +1,11 @@
 package edu.umass.cs.txn.txpackets;
 
+import edu.umass.cs.gigapaxos.interfaces.AppRequestParser;
 import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.nio.JSONPacket;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
-import edu.umass.cs.reconfiguration.examples.AppRequest;
-import edu.umass.cs.reconfiguration.examples.noop.NoopAppRequest;
-import edu.umass.cs.reconfiguration.reconfigurationpackets.ReplicableClientRequest;
+import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -58,22 +57,26 @@ public class TxClientRequest extends JSONPacket implements ClientRequest{
         JSONObject jsonObject=new JSONObject();
         ArrayList<JSONObject> j=new ArrayList<>();
         for(Request request:requests){
-            if (!(request instanceof AppRequest)) {
-                throw new RuntimeException("This was only built for NoopAppRequest");
+            if (!(request instanceof JSONPacket)) {
+                throw new RuntimeException("This was only built for requests which extend JSONPacket");
             }
-            j.add(((AppRequest)request).toJSONObject());
+            j.add(((JSONPacket)request).toJSONObject());
         }
         jsonObject.put(Keys.REQUESTS.toString(),j);
         jsonObject.put(Keys.REQUESTID.toString(),requestId);
         return jsonObject;
     }
 
-    public TxClientRequest(JSONObject jsonObject) throws JSONException{
+    public TxClientRequest(JSONObject jsonObject, AppRequestParser appRequestParser) throws JSONException{
         super(jsonObject);
         JSONArray jsonArray=jsonObject.getJSONArray(Keys.REQUESTS.toString());
         requests=new ArrayList<>();
         for(int i=0;i<jsonArray.length();i++){
-            requests.add(new AppRequest((JSONObject) jsonArray.get(i)));
+            try{
+                requests.add((ClientRequest) appRequestParser.getRequest(jsonArray.get(i).toString()));
+                }catch(RequestParseException rpe){
+               throw new JSONException("Request parse Exception");
+            }
         }
         requestId=jsonObject.getLong(Keys.REQUESTID.toString());
     }

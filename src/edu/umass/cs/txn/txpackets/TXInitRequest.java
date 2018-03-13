@@ -1,4 +1,5 @@
 package edu.umass.cs.txn.txpackets;
+import edu.umass.cs.gigapaxos.interfaces.AppRequestParser;
 import edu.umass.cs.txn.Transaction;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -17,9 +18,9 @@ public class TXInitRequest extends TXPacket{
         this.transaction=transaction;
     }
 
-    public TXInitRequest(JSONObject jsonObject) throws JSONException{
+    public TXInitRequest(JSONObject jsonObject, AppRequestParser appRequestParser) throws JSONException{
         super(jsonObject);
-        this.transaction= new  Transaction(jsonObject.getJSONObject("transaction"));
+        this.transaction= new  Transaction(jsonObject.getJSONObject("transaction"),appRequestParser);
     }
 
     @Override

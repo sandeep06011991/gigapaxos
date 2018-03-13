@@ -236,7 +236,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			if(packetId !=null){
 			switch(packetId) {
 				case TX_INIT:
-					return new TXInitRequest(jsonObject);
+					return new TXInitRequest(jsonObject,this.getCoordinator());
 				case LOCK_REQUEST:
 					return new LockRequest(jsonObject);
 				case TX_OP_REQUEST:
@@ -250,7 +250,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 				case TX_STATE_REQUEST:
 					return new TxStateRequest(jsonObject);
 				case TX_CLIENT:
-					return new TxClientRequest(jsonObject);
+					return new TxClientRequest(jsonObject,this.getCoordinator());
 				default:
 						throw new RuntimeException("Forgot handling some TX packet");
 				}

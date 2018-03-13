@@ -5,6 +5,7 @@ import edu.umass.cs.gigapaxos.interfaces.Replicable;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.txn.exceptions.TXException;
 import edu.umass.cs.txn.interfaces.TXLocker;
+import org.omg.SendingContext.RunTime;
 
 import java.util.HashMap;
 
@@ -84,10 +85,11 @@ public class TXLockerMap implements TXLocker {
 		if(txMap.containsKey(serviceName) && txMap.get(serviceName).equals(txID)){
 			if(!allowedRequests.containsKey(serviceName)){
 				allowedRequests.put(serviceName,new Long(requestId));
+				return false;
 			}
 			return true;
 		}
-		return false;
+		throw new RuntimeException("Only a locked group recieves TxOP request");
 	}
 
 	public boolean isAllowedRequest(ClientRequest clientRequest){

@@ -5,6 +5,7 @@ import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.gigapaxos.interfaces.RequestIdentifier;
 import edu.umass.cs.nio.JSONPacket;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
+import edu.umass.cs.txn.Transaction;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -18,6 +19,14 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
 
     InetSocketAddress serverAddr;
     InetSocketAddress clientAddr;
+
+    public TxClientResult(Transaction transaction,boolean success){
+        super(TXPacket.PacketType.TX_CLIENT_RESPONSE);
+        this.requestId = transaction.requestId;
+        this.success = success;
+        this.serverAddr = transaction.entryServer;
+        this.clientAddr = transaction.clientAddr;
+    }
 
     public TxClientResult(long requestId,boolean success,InetSocketAddress serverAddr,InetSocketAddress clientAddr){
         super(TXPacket.PacketType.TX_CLIENT_RESPONSE);

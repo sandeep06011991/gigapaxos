@@ -5,12 +5,13 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.TreeSet;
 
+import edu.umass.cs.gigapaxos.interfaces.AppRequestParser;
 import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
 import edu.umass.cs.gigapaxos.interfaces.Request;
-import edu.umass.cs.reconfiguration.examples.AppRequest;
-import edu.umass.cs.reconfiguration.examples.noop.NoopAppRequest;
+import edu.umass.cs.nio.JSONPacket;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.ClientReconfigurationPacket;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.DeleteServiceName;
+import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
 import edu.umass.cs.txn.interfaces.TxOp;
 import edu.umass.cs.utils.GCConcurrentHashMap;
 import org.json.JSONArray;
@@ -128,8 +129,7 @@ public class Transaction extends JSONObject {
 		jsonObject.put(Keys.TXID.toString(),txnId);
 		ArrayList<JSONObject> j=new ArrayList<>();
 		for(Request request:requests){
-//			FIXME: Again assuming NoopApp requests, should be generic
-			j.add(((AppRequest)request).toJSONObject());
+			j.add(((JSONPacket)request).toJSONObject());
 		}
 		jsonObject.put(Keys.OPS.toString(),j);
 		jsonObject.put(Keys.NODEID.toString(),nodeId);
@@ -145,13 +145,17 @@ public class Transaction extends JSONObject {
 		return new InetSocketAddress(a[0],Integer.parseInt(a[1]));
 	}
 
-	public Transaction(JSONObject jsonObject) throws JSONException {
+	public Transaction(JSONObject jsonObject, AppRequestParser appRequestParser) throws JSONException {
 		txnId = jsonObject.getString(Keys.TXID.toString());
 		JSONArray ops = jsonObject.getJSONArray(Keys.OPS.toString());
 		requests = new ArrayList<>();
 		for (int i = 0; i < ops.length(); i++) {
-			requests.add(new NoopAppRequest((JSONObject) (ops.get(i))));
-		}
+			try{
+			requests.add((ClientRequest)appRequestParser.getRequest(ops.get(i).toString()));
+				}catch (RequestParseException rpe){
+				throw new JSONException("Could understand this request");
+				}
+			}
 		nodeId = jsonObject.getString(Keys.NODEID.toString());
 		requestId = jsonObject.getLong(Keys.REQUESTID.toString());
 		clientAddr = getSocketAddrFromString(jsonObject.getString(Keys.CLIENTADDR.toString()));

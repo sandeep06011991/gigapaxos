@@ -1,20 +1,10 @@
 package edu.umass.cs.txn.testing;
 
-import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
-import edu.umass.cs.gigapaxos.interfaces.Request;
-import edu.umass.cs.gigapaxos.interfaces.RequestCallback;
-import edu.umass.cs.gigapaxos.interfaces.RequestFuture;
+import edu.umass.cs.gigapaxos.interfaces.*;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
-import edu.umass.cs.reconfiguration.examples.AppRequest;
-import edu.umass.cs.reconfiguration.examples.noopsimple.NoopApp;
-import edu.umass.cs.reconfiguration.reconfigurationpackets.ActiveReplicaError;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.CreateServiceName;
-import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
-import edu.umass.cs.txn.testing.app.CalculatorTX;
-import edu.umass.cs.txn.testing.app.GetRequest;
-import edu.umass.cs.txn.testing.app.OperateRequest;
-import edu.umass.cs.txn.testing.app.ResultRequest;
+import edu.umass.cs.txn.testing.app.*;
 import edu.umass.cs.txn.txpackets.TXPacket;
 import edu.umass.cs.txn.txpackets.TxClientRequest;
 import edu.umass.cs.txn.txpackets.TxClientResult;
@@ -28,7 +18,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author arun
+ * @author Sandeep
  *
  */
 public class TxnClient extends ReconfigurableAppClientAsync<Request> {
@@ -37,6 +27,69 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
     static TxnClient client;
 
+    static boolean created = false;
+
+    static void createSomething(){
+        if(!created){
+            try {
+                client = new TxnClient();
+                client.sendRequest(new CreateServiceName("Service_name_txn","0"));
+                client.sendRequest(new CreateServiceName("name0", "0"));
+                client.sendRequest(new CreateServiceName("name1","1"));
+//                Fixme:Hack clean this up later
+                TimeUnit.SECONDS.sleep(5);
+            }catch(Exception e){
+                e.printStackTrace();
+                throw new RuntimeException("Unable to create");
+            }
+        }
+        created = true;
+    }
+
+    void testGetRequest() throws IOException{
+        sendRequest(new GetRequest("name1"), new InetSocketAddress("127.0.0.1", 2100), new RequestCallback() {
+            @Override
+            public void handleResponse(Request response) {
+                ResultRequest rr= (ResultRequest)response;
+                assert  rr.getResult() == 21;
+                System.out.println("Get Test complete");
+
+            }
+        });
+    }
+
+    void testCommit(){
+        createSomething();
+        InetSocketAddress entryServer=new InetSocketAddress("127.0.0.1",2100);
+        ArrayList<ClientRequest> requests = new ArrayList<>();
+        requests.add(new OperateRequest("name0", 10, OperateRequest.Operation.add));
+        requests.add(new OperateRequest("name1", 20, OperateRequest.Operation.add));
+
+
+        try{
+            TxClientRequest txClientRequest = new TxClientRequest(requests);
+            RequestFuture rd= sendRequest(txClientRequest,entryServer, new RequestCallback() {
+                @Override
+                public void handleResponse(Request response) {
+                    if(response instanceof TxClientResult){
+                        try {
+                            System.out.println("Transaction status "+((TxClientResult) response).success);
+                            testGetRequest();
+                            System.out.println("Transaction test complete");
+                        }catch(Exception e){
+                            throw new RuntimeException("Transaction failed");
+                        }
+                    }
+                }
+             });
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+
+    }
+
     /**
      * @throws IOException
      */
@@ -44,59 +97,17 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
         super();
     }
 
-    private synchronized void incrNumResponses() {
-        this.numResponses++;
-    }
-
-    private static final long INTER_REQUEST_TIME = 50;
-
-    private void testSendBunchOfRequests(String name, int numRequests)
-            throws IOException {
-        System.out.println("Created " + name
-                + " and beginning to send test requests");
-        new Thread(new Runnable() {
-            public void run() {
-                for (int i = 0; i < numRequests; i++) {
-                    long reqInitime = System.currentTimeMillis();
-                    try {
-                        InetSocketAddress entryServer=new InetSocketAddress("127.0.0.1",2100);
-                        ArrayList<ClientRequest> requests=new ArrayList<>();
-                        requests.add(new AppRequest("name0",
-                                "request_value" + i,
-                                AppRequest.PacketType.DEFAULT_APP_REQUEST,
-                                false));
-                        requests.add(new AppRequest("name1",
-                                "request_value" + i+1,
-                                AppRequest.PacketType.DEFAULT_APP_REQUEST,
-                                false));
-                        TxClientRequest txClientRequest=new TxClientRequest(requests);
-                        System.out.println(txClientRequest.getRequestID()+"reID");
-
-                        sendRequest(txClientRequest,entryServer, new RequestCallback() {
-                            @Override
-                            public void handleResponse(Request response) {
-                                if(response instanceof TxClientResult){
-                                    System.out.println(("Transaction status"+((TxClientResult) response).success));
-                                }
-                                System.out.print("Delivered");
-                            }
-
-                        });
-                    }catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }).start();
-    }
 
     @Override
     public Request getRequest(String stringified) {
         try {
+/*      DEBUG tip: If requests are not being recieved debug here */
             JSONObject jsonObject=new JSONObject(stringified);
             if(jsonObject.getInt("type")==4){
                 return new ResultRequest(jsonObject);
+            }
+            if(jsonObject.getInt("type")==262){
+                return new TxClientResult(jsonObject);
             }
         } catch ( JSONException e) {
             // do nothing by designSys
@@ -112,7 +123,9 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
     @Override
     public Set<IntegerPacketType> getRequestTypes() {
-        return CalculatorTX.staticGetRequestTypes();
+        Set<IntegerPacketType> set = CalculatorTX.staticGetRequestTypes();
+        set.add(TXPacket.PacketType.TX_CLIENT_RESPONSE);
+        return set;
     }
 
     /**
@@ -120,94 +133,17 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
      * to each of them. Refer to the parent class
      * {@link ReconfigurableAppClientAsync} for other utility methods available
      * to this method or to know how to write your own client.
-     *
+     *w
      * @param args
      * @throws IOException
      */
 
     public static void main(String args[]) throws  IOException{
-        function();
+        createSomething();
+//        client.testGetRequest();
+        client.testCommit();
+
     }
 
-    public static void function() throws IOException {
-        client = new TxnClient();
-
-        final int numNames = 1;
-        final int numReqs = 1;
-        String namePrefix = "Service_name_txn";
-        String initialState = "some_default_initial_state";
-        try {
-            client.sendRequest(new CreateServiceName("name0", "0"));
-            client.sendRequest(new CreateServiceName("name1","1"));
-        }catch(Exception ex){
-            System.out.println("Unable to create");
-        }
-        try {
-            TimeUnit.SECONDS.sleep(5);
-        }catch (Exception e){
-            //
-
-        }
-
-        client.sendRequest(new OperateRequest("name0", 10, OperateRequest.Operation.add), new RequestCallback() {
-            @Override
-            public void handleResponse(Request response) {
-
-            }
-        });
-        client.sendRequest(new OperateRequest("name0", 10, OperateRequest.Operation.multiply), new RequestCallback() {
-            @Override
-            public void handleResponse(Request response) {
-
-            }
-        });
-        try{
-            TimeUnit.SECONDS.sleep(10);
-        }catch(Exception e){
-
-        }
-        Request request =  client.sendRequest(new GetRequest("name0"));
-
-        if(request instanceof ResultRequest){
-            ResultRequest rr = (ResultRequest)request;
-            System.out.println("Result is "+rr.getResult());
-        }
-
-//        FIXME: COMMENTING ALL THIS  - clean this later
-    /*
-        for (int i = 0; i < numNames; i++) {
-            final String name = namePrefix;
-
-            client.sendRequest(new CreateServiceName(name, initialState),
-                    new RequestCallback() {
-                        @Override
-                        public void handleResponse(Request response) {
-                            try {
-                                    client.testSendBunchOfRequests(name,
-                                            numReqs);
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    });
-        }
-        synchronized (client) {
-            long maxWaitTime = numReqs * INTER_REQUEST_TIME + 4000, waitInitTime = System
-                    .currentTimeMillis();
-            while (client.numResponses < numNames * numReqs
-                    && (System.currentTimeMillis() - waitInitTime < maxWaitTime))
-                try {
-                    client.wait(maxWaitTime);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-        }
-        System.out.println("\n" + client + " successfully created " + numNames
-                + " names, sent " + numNames * numReqs
-                + " requests, and received " + client.numResponses
-                + " responses.");
-        client.close();
-    */
-    }
 
 }

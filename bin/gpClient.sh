@@ -136,6 +136,8 @@ edu.umass.cs.reconfiguration.examples.NoopAppClient"
   exit
 fi
 
+DEBUG_OPTION="-Xdebug -Xrunjdwp:server=y,transport=dt_socket,address=9010,suspend=n"
+
 echo "java $SSL_OPTIONS $JVM_APP_ARGS $DEFAULT_CLIENT" 
-java $SSL_OPTIONS $JVM_APP_ARGS $DEFAULT_CLIENT
+java  $DEBUG_OPTION  $SSL_OPTIONS $JVM_APP_ARGS $DEFAULT_CLIENT
 
