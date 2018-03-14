@@ -47,7 +47,7 @@ public class TxExecuteProtocolTask<NodeIDType>
 
     @Override
     public TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary) {
-        if(isPrimary){throw new RuntimeException("Safety Violation");}
+        if(isPrimary){return null;}
         return new TxSecondaryProtocolTask(transaction,TxState.INIT,getProtocolExecutor());
     }
 
@@ -75,6 +75,7 @@ public class TxExecuteProtocolTask<NodeIDType>
         assert toExecuteRequests.size() > 0;
         Long rqId = toExecuteRequests.get(0);
         ClientRequest toSend = map.get(rqId);
+        System.out.println("Attempt operation "+toSend.getRequestID());
         return  getMessageTask(new TxOpRequest(transaction.getTXID(),toSend));
     }
 

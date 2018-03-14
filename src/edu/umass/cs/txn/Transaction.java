@@ -145,6 +145,7 @@ public class Transaction extends JSONObject {
 		return new InetSocketAddress(a[0],Integer.parseInt(a[1]));
 	}
 
+
 	public Transaction(JSONObject jsonObject, AppRequestParser appRequestParser) throws JSONException {
 		txnId = jsonObject.getString(Keys.TXID.toString());
 		JSONArray ops = jsonObject.getJSONArray(Keys.OPS.toString());

@@ -27,7 +27,6 @@ public  class TxCommitProtocolTask<NodeIDType> extends
     @Override
     public TransactionProtocolTask onStateChange(TxStateRequest request) {
         if(request.getState() == TxState.COMPLETE){
-
             System.out.println("Commit Sequence complete");
             return null;
         }
@@ -36,7 +35,10 @@ public  class TxCommitProtocolTask<NodeIDType> extends
 
     @Override
     public TransactionProtocolTask onTakeOver(TXTakeover request, boolean isPrimary) {
-        if(isPrimary){throw new RuntimeException("Safety VIOLATION");}
+        if(isPrimary){
+//            FIXME: study request retry of gigapaxos to fix this
+            return null;
+        }
         return new TxSecondaryProtocolTask(transaction,TxState.COMMITTED,getProtocolExecutor());
     }
 

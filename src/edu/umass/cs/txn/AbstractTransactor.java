@@ -68,6 +68,10 @@ public  abstract class AbstractTransactor<NodeIDType> extends
 
 	}
 
+	public NodeIDType getMyID() {
+		return this.coordinator.getMyID();
+	}
+
 
 	private static final boolean ENABLE_TRANSACTIONS = Config
 			.getGlobalBoolean(RC.ENABLE_TRANSACTIONS);

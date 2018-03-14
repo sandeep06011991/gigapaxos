@@ -121,7 +121,13 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
         });
 
-        sendRequest(txClientRequest1, entryServer, new RequestCallback() {
+        sendRequest(txClientRequest1, entryServer, new TimeoutRequestCallback() {
+            @Override
+            public long getTimeout() {
+                return 600*1000;
+            }
+
+
             @Override
             public void handleResponse(Request response) {
                 assert response instanceof TxClientResult;
@@ -140,7 +146,12 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
         requests.add(new OperateRequest("name0", 10, OperateRequest.Operation.add));
         requests.add(new OperateRequest("name1", 20, OperateRequest.Operation.add));
         TxClientRequest txClientRequest = new TxClientRequest(requests);
-        RequestFuture rd= sendRequest(txClientRequest,entryServer, new RequestCallback() {
+        RequestFuture rd= sendRequest(txClientRequest,entryServer, new TimeoutRequestCallback() {
+            @Override
+            public long getTimeout() {
+                return 600000*1000;
+            }
+
             @Override
             public void handleResponse(Request response) {
                 if(response instanceof TxClientResult){
@@ -173,6 +184,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
                 return new ResultRequest(jsonObject);
             }
             if(jsonObject.getInt("type")==262){
+                System.out.println(stringified);
                 return new TxClientResult(jsonObject);
             }
         } catch ( JSONException e) {
@@ -207,9 +219,9 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
     public static void main(String args[]) throws  IOException{
         createSomething();
 //        client.testGetRequest();
-//        client.testBasicCommit();
+        client.testBasicCommit();
 //          client.testMultiLineTxn();
-          client.testAborting();
+//          client.testAborting();
     }
 
 

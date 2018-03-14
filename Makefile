@@ -22,7 +22,7 @@ client:
 	./bin/gpClient.sh edu.umass.cs.txn.testing.TxnClient
 
 kill:
-	ps | grep java | awk 'BEGIN {}{print $$1}' | xargs  kill -9
+	ps -e| grep java | awk 'BEGIN {}{print $$1}' | xargs  kill -9
 
 test:
 	rm -f tmp/*

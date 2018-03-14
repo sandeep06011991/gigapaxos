@@ -106,7 +106,7 @@ public class TXLockerMap implements TXLocker {
 		String serviceName=clientRequest.getServiceName();
 		if(!isLocked(serviceName)){return true;}
 		if(allowedRequests.containsKey(serviceName)&& allowedRequests.get(serviceName).contains(clientRequest.getRequestID())){
-			System.out.println("Request Is allowed");
+//			System.out.println("Request Is allowed");
 			return true;
 		}
 		return false;

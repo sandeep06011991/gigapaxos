@@ -40,7 +40,13 @@ public class TxLockProtocolTask<NodeIDType> extends
 
     @Override
     public TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary) {
-        if(isPrimary){throw new RuntimeException("Safety Violation");}
+        if(isPrimary){
+/*      FIXME: Why is this possible
+            Check request retry mechanism with arun
+            Assumption: requests with same reqID are ignored.
+ *      If a node recieves an old take over message */
+            return  null;
+        }
         return new TxSecondaryProtocolTask(transaction,TxState.INIT,getProtocolExecutor());
     }
 
@@ -80,8 +86,8 @@ public class TxLockProtocolTask<NodeIDType> extends
 
             }
         System.out.println("Begin Locking");
-
         return getMessageTask(requests);
+
     }
 
 

@@ -11,6 +11,7 @@ public class TXTakeover extends TXPacket{
 
     public TXTakeover(IntegerPacketType t, String txid) {
         super(t, txid);
+
     }
     @Override
     public boolean needsCoordination(){
@@ -20,6 +21,7 @@ public class TXTakeover extends TXPacket{
     @Override
     public JSONObject toJSONObject() throws JSONException {
         JSONObject jsonObject=super.toJSONObject();
+        assert nodeId !=null;
         jsonObject.put("nodeId",nodeId);
         return jsonObject;
     }
