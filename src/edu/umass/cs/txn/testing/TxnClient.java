@@ -135,7 +135,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
     void testBasicCommit() throws IOException{
         createSomething();
-        InetSocketAddress entryServer=new InetSocketAddress("127.0.0.1",2100);
+        InetSocketAddress entryServer=new InetSocketAddress("hp066.utah.cloudlab.us",2100);
         ArrayList<ClientRequest> requests = new ArrayList<>();
         requests.add(new OperateRequest("name0", 10, OperateRequest.Operation.add));
         requests.add(new OperateRequest("name1", 20, OperateRequest.Operation.add));
@@ -207,9 +207,9 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
     public static void main(String args[]) throws  IOException{
         createSomething();
 //        client.testGetRequest();
-//        client.testBasicCommit();
+        client.testBasicCommit();
 //          client.testMultiLineTxn();
-          client.testAborting();
+//          client.testAborting();
     }
 
 

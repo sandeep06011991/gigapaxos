@@ -431,7 +431,7 @@ function start_server {
     fi
     DEBUG_PORT=$((DEBUG_PORT+1))
   fi
-.
+
   if [[ $ifconfig_found != "" && `$ifconfig_cmd|grep $address` != "" ]]; then
     if [[ $VERBOSE == 2 ]]; then
       echo "$JAVA $DEBUG_ARGS $JVMARGS \

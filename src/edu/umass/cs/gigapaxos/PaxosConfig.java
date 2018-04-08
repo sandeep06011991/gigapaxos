@@ -1074,6 +1074,7 @@ public class PaxosConfig {
 									+ "CLIENT_PORT_SSL_OFFSET="
 									+ Config.getGlobalInt(PC.CLIENT_PORT_SSL_OFFSET)
 									+ " apart.");
+			}
 		}
 	}
 
