@@ -418,6 +418,24 @@ function get_address_port {
   fi
 }
 
+function check_java {
+
+
+#### Install all relevant software
+
+remote = "$SSH $username@$address"
+java_version=`$remote which java`
+##
+if [ -z $java_version ]; then
+    echo $remote "sudo apt-get install openjdk-8-jre"
+    `$remote 'sudo apt-get -y install openjdk-8-jre' >&2`
+    echo "`$remote which java` is installed"
+else
+    echo "$java_version is installed"
+fi
+#
+}
+
 # start server if local, else append to non_local list
 function start_server {
   server=$1
@@ -447,7 +465,7 @@ function start_server {
     print 2 "$RSYNC --rsync-path=\"$RSYNC_PATH && rsync\" \
       $jar_files $username@$address:$INSTALL_PATH/jars/ "
     $RSYNC --rsync-path="$RSYNC_PATH && rsync" \
-      $jar_files $username@$address:$INSTALL_PATH/jars/ 
+      $jar_files $username@$address:$INSTALL_PATH/jars/
     rsync_symlink $address
 
     # then start remote server
@@ -456,7 +474,7 @@ function start_server {
       -cp \`ls jars/*|awk '{printf \$0\":\"}'\` \
       edu.umass.cs.reconfiguration.ReconfigurableNode \
       $APP_ARGS $server \""
-    
+
     $SSH $username@$address "cd $INSTALL_PATH; nohup \
       $JAVA $DEBUG_ARGS $REMOTE_JVMARGS \
       -cp \`ls jars/*|awk '{printf \$0\":\"}'\` \
@@ -495,7 +513,7 @@ function stop_servers {
           foundservers="$i($pid) $foundservers"
           pids="$pids $pid"
         fi
-      else 
+      else
         # remote kill
         echo "Stopping remote server $server"
         echo $SSH $username@$address "\"kill -9 \`ps -ef|\

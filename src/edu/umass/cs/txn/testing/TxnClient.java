@@ -95,6 +95,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
     void testAborting() throws IOException{
         createSomething();
+
         InetSocketAddress entryServer=new InetSocketAddress("127.0.0.1",2100);
         ArrayList<ClientRequest> requests = new ArrayList<>();
         requests.add(new OperateRequest("name0", 10, OperateRequest.Operation.add));
@@ -135,12 +136,14 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
     void testBasicCommit() throws IOException{
         createSomething();
+
         InetSocketAddress entryServer=new InetSocketAddress("hp066.utah.cloudlab.us",2100);
         ArrayList<ClientRequest> requests = new ArrayList<>();
         requests.add(new OperateRequest("name0", 10, OperateRequest.Operation.add));
         requests.add(new OperateRequest("name1", 20, OperateRequest.Operation.add));
         TxClientRequest txClientRequest = new TxClientRequest(requests);
-        RequestFuture rd= sendRequest(txClientRequest,entryServer, new RequestCallback() {
+        System.out.println("Attempting Send ");
+        RequestFuture rd= sendRequestAnycast(txClientRequest, new RequestCallback() {
             @Override
             public void handleResponse(Request response) {
                 if(response instanceof TxClientResult){
