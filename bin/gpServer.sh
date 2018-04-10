@@ -418,6 +418,24 @@ function get_address_port {
   fi
 }
 
+function check_java {
+
+
+#### Install all relevant software
+
+remote = "$SSH $username@$address"
+java_version=`$remote which java`
+##
+if [ -z $java_version ]; then
+    echo $remote "sudo apt-get install openjdk-8-jre"
+    `$remote 'sudo apt-get -y install openjdk-8-jre' >&2`
+    echo "`$remote which java` is installed"
+else
+    echo "$java_version is installed"
+fi
+#
+}
+
 # start server if local, else append to non_local list
 function start_server {
   server=$1
@@ -437,31 +455,47 @@ function start_server {
       echo "$JAVA $DEBUG_ARGS $JVMARGS \
         edu.umass.cs.reconfiguration.ReconfigurableNode $server&"
     fi
+
+    if [[ $address != "127.0.0.1" || $address != "localhost" ]]; then
+     echo "locally deploying at remote"
+     $JAVA $DEBUG_ARGS $REMOTE_JVMARGS \
+      -cp `ls jars/*|awk '{printf $0":"}'` \
+      edu.umass.cs.reconfiguration.ReconfigurableNode \
+      $APP_ARGS $server &
+    else
     $JAVA $DEBUG_ARGS $JVMARGS \
       edu.umass.cs.reconfiguration.ReconfigurableNode $server&
+    fi
   else
     # first rsync files to remote server
     non_local="$server=$addressport $non_local"
     echo "Starting remote server $server"
+    check_java $username $address
+    print 1 "transferring  bin scripts"
+    rsync -r bin $username@$address:$INSTALL_PATH
+
     print 1 "Transferring jar files $jar_files to $address:$INSTALL_PATH"
     print 2 "$RSYNC --rsync-path=\"$RSYNC_PATH && rsync\" \
       $jar_files $username@$address:$INSTALL_PATH/jars/ "
     $RSYNC --rsync-path="$RSYNC_PATH && rsync" \
-      $jar_files $username@$address:$INSTALL_PATH/jars/ 
+      $jar_files $username@$address:$INSTALL_PATH/jars/
     rsync_symlink $address
 
+    $SSH $username@$address "cd $INSTALL_PATH;python bin/mttf.py 1 $server" &
+
+#    # skip this step
     # then start remote server
-    print 2 "$SSH $username@$address \"cd $INSTALL_PATH; nohup \
-      $JAVA $DEBUG_ARGS $REMOTE_JVMARGS \
-      -cp \`ls jars/*|awk '{printf \$0\":\"}'\` \
-      edu.umass.cs.reconfiguration.ReconfigurableNode \
-      $APP_ARGS $server \""
-    
-    $SSH $username@$address "cd $INSTALL_PATH; nohup \
-      $JAVA $DEBUG_ARGS $REMOTE_JVMARGS \
-      -cp \`ls jars/*|awk '{printf \$0\":\"}'\` \
-      edu.umass.cs.reconfiguration.ReconfigurableNode \
-      $APP_ARGS $server "&
+#    print 2 "$SSH $username@$address \"cd $INSTALL_PATH; nohup \
+#      $JAVA $DEBUG_ARGS $REMOTE_JVMARGS \
+#      -cp \`ls jars/*|awk '{printf \$0\":\"}'\` \
+#      edu.umass.cs.reconfiguration.ReconfigurableNode \
+#      $APP_ARGS $server \""
+#     exit 1
+#    $SSH $username@$address "cd $INSTALL_PATH; nohup \
+#      $JAVA $DEBUG_ARGS $REMOTE_JVMARGS \
+#      -cp \`ls jars/*|awk '{printf \$0\":\"}'\` \
+#      edu.umass.cs.reconfiguration.ReconfigurableNode \
+#      $APP_ARGS $server "&
   fi
 }
 
@@ -489,13 +523,19 @@ function stop_servers {
       KILL_TARGET="ReconfigurableNode .*$i"
       if [[ ! -z $ifconfig_found && `$ifconfig_cmd|grep $address` != "" ]]; 
       then
-        pid=`ps -ef|grep "$KILL_TARGET"|grep -v grep|\
-          awk '{print $2}' 2>/dev/null`
-        if [[ $pid != "" ]]; then
-          foundservers="$i($pid) $foundservers"
-          pids="$pids $pid"
-        fi
-      else 
+                if [[ $address != "127.0.0.1" ]]; then
+                     kill -9 `ps -ef|\
+                  grep "$KILL_TARGET"|grep -v grep|awk \
+                  '{print $2}'` 2>/dev/null
+            else
+                pid=`ps -ef|grep "$KILL_TARGET"|grep -v grep|\
+                  awk '{print $2}' 2>/dev/null`
+                if [[ $pid != "" ]]; then
+                  foundservers="$i($pid) $foundservers"
+                  pids="$pids $pid"
+                fi
+               fi
+      else
         # remote kill
         echo "Stopping remote server $server"
         echo $SSH $username@$address "\"kill -9 \`ps -ef|\

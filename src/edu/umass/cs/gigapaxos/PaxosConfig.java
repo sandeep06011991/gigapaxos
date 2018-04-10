@@ -1076,7 +1076,7 @@ public class PaxosConfig {
 									+ " apart.");
 			}
 		}
-	}
+
 
 	/**
 	 * @return Default node config.
