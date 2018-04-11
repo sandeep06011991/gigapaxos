@@ -33,7 +33,6 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
         if(!created){
             try {
                 client = new TxnClient();
-                CreateServiceName()
                 client.sendRequest(new CreateServiceName("Service_name_txn","0"));
                 client.sendRequest(new CreateServiceName("name0", "0"));
                 client.sendRequest(new CreateServiceName("name1","1"));
@@ -209,6 +208,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
      */
 
     public static void main(String args[]) throws  IOException{
+        Process p = Runtime.getRuntime().exec(new String[]{"ls"});
         createSomething();
 //        client.testGetRequest();
         client.testBasicCommit();
