@@ -1,5 +1,16 @@
 Question
 
+When a server is restarted the PRC recovers completely and then hands off the the App
+The recovery of the PRC happens when it is constructed
+Coupling has to be removed as it might depend on the preexecuted call backs
+So ARC explicit recovery.
+
+Precheckpoint
+and Restore
+If
+
+
+
 FEATURES TO BUILD
 4. Abort and rollback the transaction (LONG)
 5. Checkpoint and restore (OK)

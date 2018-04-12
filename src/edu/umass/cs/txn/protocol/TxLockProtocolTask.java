@@ -35,7 +35,12 @@ public class TxLockProtocolTask<NodeIDType> extends
 //            if the primary had changed, there would be a take over message in between
             return new TxAbortProtocolTask(transaction,protocolExecutor);
         }
-        throw new RuntimeException("Safety Violation");
+        if(request.getState() == TxState.COMMITTED){
+//            This happens when the server is recovering
+            return new TxCommitProtocolTask(transaction,protocolExecutor);
+        }
+
+        throw new RuntimeException("Safety Violation"+request.toString());
     }
 
     @Override

@@ -40,6 +40,11 @@ public  abstract class AbstractTransactor<NodeIDType> extends
 
 	private final AbstractReplicaCoordinator<NodeIDType> coordinator;
 
+	@Override
+	public NodeIDType getMyID() {
+		return coordinator.getMyID();
+	}
+
 	protected AbstractTransactor(
 			AbstractReplicaCoordinator<NodeIDType> coordinator) {
 		super(coordinator);

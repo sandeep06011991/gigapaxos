@@ -72,6 +72,10 @@ public class PaxosReplicaCoordinator<NodeIDType> extends
 						.getNodePort(myID)), niot);
 	}
 
+	@Override
+	public void initRecovery() {
+		this.paxosManager.initiateRecovery(this.paxosManager.getNodeID());
+	}
 
 	/**
 	 * @param app

@@ -558,4 +558,6 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 		}
 		return false;
 	}
+
+	abstract public void initRecovery();
 }

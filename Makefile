@@ -30,3 +30,9 @@ test:
 	rm -rf paxos_logs/*
 	rm -rf reconfiguration_DB/*
 	ant runtest -Dtest=edu.umass.cs.txn.testing.SerializabilityTest
+
+kill_all:
+	./bin/gpServer.sh  -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties  stop all
+
+restart:
+	./bin/gpServer.sh -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties start all

@@ -13,6 +13,7 @@ import edu.umass.cs.nio.nioutils.NIOHeader;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
+import edu.umass.cs.reconfiguration.PaxosReplicaCoordinator;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
 import edu.umass.cs.reconfiguration.examples.AppRequest;
@@ -50,6 +51,8 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 
 	private final TXLocker txLocker;
 
+	private TxMessenger txMessenger;
+
 	/**
 	 * @param coordinator
 	 * @throws IOException
@@ -59,9 +62,10 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		super(coordinator);
 		this.gpClient = TXUtils.getGPClient(this);
 		this.txLocker = new TXLockerMap(coordinator);
-		TxMessenger txMessenger=new TxMessenger(this.gpClient,this);
+		txMessenger=new TxMessenger(this.gpClient,this);
 		protocolExecutor=new ProtocolExecutor<>(txMessenger);
 		txMessenger.setProtocolExecutor(protocolExecutor);
+
 	}
 
 
@@ -258,6 +262,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		}catch(JSONException e){
 			throw new RequestParseException(e);
 		}
+//		FixMe: this must be handled outside, dont need to pass it iin
 		return this.app.getRequest(str);
 	}
 
@@ -308,7 +313,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		if(request instanceof TXInitRequest){
 			TXInitRequest trx=(TXInitRequest)request;
 				if(trx.transaction.nodeId.equals(getMyID())){
-					System.out.println("Initiating Primary Transaction");
+					System.out.println("Initiating Primary Transaction	"+getMyID());
 					this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(trx.transaction,protocolExecutor));
 				}else{
 					System.out.println("Initiating Secondary Transaction");
@@ -387,5 +392,9 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		return false;
 	}
 
-
+	@Override
+	public void initRecovery() {
+		this.getCoordinator().initRecovery();
+		this.txMessenger.recoveringComplete();
+	}
 }

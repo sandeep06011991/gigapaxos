@@ -1,5 +1,6 @@
 package edu.umass.cs.txn.testing;
 
+import edu.umass.cs.gigapaxos.PaxosConfig;
 import edu.umass.cs.gigapaxos.interfaces.*;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
@@ -11,7 +12,10 @@ import edu.umass.cs.txn.txpackets.TxClientResult;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Set;
@@ -208,7 +212,16 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
      */
 
     public static void main(String args[]) throws  IOException{
-        Process p = Runtime.getRuntime().exec(new String[]{"ls"});
+//        for(InetSocketAddress socketAddress:PaxosConfig.getActives().values()){
+//            System.out.println(socketAddress);
+//        }
+//        Process p = Runtime.getRuntime().exec(new String[]{"ls"});
+//        BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
+//        String line;
+//        while ((line = input.readLine()) != null) {
+//            System.out.println(line);
+//        }
+//        input.close();
         createSomething();
 //        client.testGetRequest();
         client.testBasicCommit();

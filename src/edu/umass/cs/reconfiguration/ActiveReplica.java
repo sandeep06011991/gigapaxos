@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import edu.umass.cs.txn.DistTransactor;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -162,6 +163,7 @@ public class ActiveReplica<NodeIDType> implements ReconfiguratorCallback,
 				// setting default callback is optional
 				// (ReconfiguratorCallback) this).setCallback(
 						(ReconfiguratorCallback) this));
+		this.appCoordinator.initRecovery();
 		this.nodeConfig = new ConsistentReconfigurableNodeConfig<NodeIDType>(
 				nodeConfig);
 		this.demandProfiler = new AggregateDemandProfiler(getReconfigurableAppInfo());

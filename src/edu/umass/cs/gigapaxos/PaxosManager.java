@@ -456,7 +456,6 @@ public class PaxosManager<NodeIDType> {
 		niot.precedePacketDemultiplexer(Config.getGlobalString(PC.JSON_LIBRARY)
 				.equals("org.json") ? new JSONDemultiplexer()
 				: new FastDemultiplexer());
-		initiateRecovery(id);
 		if (!Config.getGlobalBoolean(PC.DELAY_PROFILER))
 			DelayProfiler.disable();
 	}
@@ -1829,7 +1828,8 @@ public class PaxosManager<NodeIDType> {
 	 * Synchronized because this method invokes an incremental read on the
 	 * database that currently does not support parallelism. But the
 	 * "synchronized" qualifier here is not necessary for correctness. */
-	private synchronized void initiateRecovery(NodeIDType id) {
+	public synchronized void initiateRecovery(NodeIDType id) {
+		if(hasRecovered)return;
 		boolean found = false;
 		int groupCount = 0, freq = 1;
 		long initTime = System.currentTimeMillis();

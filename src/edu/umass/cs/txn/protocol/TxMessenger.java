@@ -26,6 +26,10 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
 
     public ProtocolExecutor pe;
 
+    boolean isRecovering = true;
+
+
+
     public void setProtocolExecutor(ProtocolExecutor pe){
         this.pe=pe;
     }
@@ -37,6 +41,10 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
         this.abstractReplicaCoordinator=abstractReplicaCoordinator;
     }
     public void sendObject(Object message) {
+        if(isRecovering){
+            System.out.println("Sorry is recovering ");
+            return;
+        }
         try {
             if(message instanceof TXTakeover){
                 ((TXTakeover) message).setNewLeader((String)getMyID());
@@ -160,5 +168,8 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
 //        return false;
     }
 
+    public void recoveringComplete(){
+        this.isRecovering = false;
+    }
 
 }
