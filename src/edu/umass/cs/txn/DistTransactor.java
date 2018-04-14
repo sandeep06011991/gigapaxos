@@ -3,6 +3,7 @@ package edu.umass.cs.txn;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -22,6 +23,7 @@ import edu.umass.cs.reconfiguration.reconfigurationpackets.RequestActiveReplicas
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
 
 import edu.umass.cs.txn.exceptions.TXException;
+import edu.umass.cs.txn.exceptions.TxnState;
 import edu.umass.cs.txn.interfaces.TXLocker;
 import edu.umass.cs.txn.protocol.*;
 import edu.umass.cs.txn.txpackets.*;
@@ -53,6 +55,8 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 
 	private TxMessenger txMessenger;
 
+
+	HashMap<String,LeaderState> leaderStateHashMap = new HashMap<>();
 	/**
 	 * @param coordinator
 	 * @throws IOException
@@ -298,7 +302,6 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			TxClientRequest txClientRequest=(TxClientRequest)request;
 			Transaction transaction = new Transaction(txClientRequest.recvrAddr,
 					((TxClientRequest) request).getRequests(), (String) getMyID(),txClientRequest.clientAddr,txClientRequest.getRequestID());
-
 			try {
 					this.gpClient.sendRequest(new TXInitRequest(transaction));
 
@@ -321,6 +324,13 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 							new TxSecondaryProtocolTask<>
 									(trx.transaction,TxState.INIT,protocolExecutor));
 				}
+			String leader_name="Service_name_txn";
+			LeaderState leaderState;
+			if((leaderState = leaderStateHashMap.get(leader_name))==null){
+				leaderState = new LeaderState(leader_name);
+			}
+			leaderState.insertNewTransaction(new OngoingTxn(trx.transaction,TxState.INIT));
+			leaderStateHashMap.put(leader_name,leaderState);
 			return true;
 		}
 		if(request instanceof LockRequest){
@@ -369,6 +379,8 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			ProtocolTask newProtocolTask=protocolTask.onStateChange((TxStateRequest) request);
 			protocolExecutor.remove((String)protocolTask.getKey());
 			if(newProtocolTask!=null)protocolExecutor.spawn(newProtocolTask);
+			leaderStateHashMap.get("Service_name_txn").
+					updateTransaction(((TxStateRequest) request).getTXID(),((TxStateRequest) request).getState());
 			return true;
 		}
 
@@ -397,4 +409,75 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		this.getCoordinator().initRecovery();
 		this.txMessenger.recoveringComplete();
 	}
+
+
+	public String preCheckpoint(String name) {
+		if(!txLocker.isLocked(name)&&!leaderStateHashMap.containsKey(name)){return null;}
+		JSONObject jsonObject= new JSONObject();
+		try {
+			if (txLocker.isLocked(name)) {
+				jsonObject.put("txLocker", txLocker.getStateMap(name).toJSONObject());
+			}
+			if(leaderStateHashMap.containsKey(name)){
+				jsonObject.put("leader",leaderStateHashMap.get(name).toJSONObject(name));
+			}
+
+		System.out.println("Current Checkpoint"+jsonObject.toString());
+		return jsonObject.toString();
+		}catch(JSONException ex){
+			throw new RuntimeException("Conversion to JSON is flawed");
+
+		}
+	}
+
+	public boolean preRestore(String name, String state) {
+		try {
+			System.out.println("Attempting to restore"+name+"	: "+state);
+			JSONObject jsonObject = new JSONObject(state);
+			if(jsonObject.has("txLocker")){
+				TxnState txnState=new TxnState(jsonObject.getJSONObject("txLocker"));
+				this.getCoordinator().restore(name,txnState.state);
+				txLocker.updateStateMap(name,txnState);
+				for(String req_string:txnState.requests){
+					Request request=this.getCoordinator().getRequest(req_string);
+					this.getCoordinator().execute(request,true);
+				}
+			}
+			if(jsonObject.has("leader")){
+//				FixMe: Repeat some code for a quick fix
+				LeaderState leaderState = new LeaderState(jsonObject.getJSONObject("leader"),this.getCoordinator());
+				for(OngoingTxn ongoingTxn:leaderState.ongoingTxnHashMap.values()){
+					switch(ongoingTxn.txState){
+						case INIT:	Transaction transaction = ongoingTxn.transaction;
+									if(transaction.nodeId.equals(getMyID())){
+									System.out.println("Initiating Primary Transaction	"+getMyID());
+										this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(transaction,protocolExecutor));
+									}else{
+										System.out.println("Initiating Secondary Transaction");
+										this.protocolExecutor.spawnIfNotRunning(
+												new TxSecondaryProtocolTask<>
+														(transaction,TxState.INIT,protocolExecutor));
+									}
+									break;
+						case COMMITTED:	protocolExecutor.spawn(new TxCommitProtocolTask<>(ongoingTxn.transaction,protocolExecutor));
+										break;
+						case ABORTED:	protocolExecutor.spawn(new TxAbortProtocolTask<>(ongoingTxn.transaction,protocolExecutor));
+										break;
+						case COMPLETE: throw new RuntimeException("If it was complete why would it be recorded");
+					}
+				}
+				leaderStateHashMap.put(name,leaderState);
+
+			}
+			return true;
+		}catch(JSONException j){
+			System.out.println("not a jsonObject" +state);
+		}catch(RequestParseException rpe){
+			System.out.println("not a request");
+		}
+		System.out.println("Flowing into the system "+name+":"+state);
+		return false;
+	}
+
+
 }

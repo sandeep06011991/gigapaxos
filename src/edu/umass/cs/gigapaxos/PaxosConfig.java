@@ -407,7 +407,7 @@ public class PaxosConfig {
 		 * coordinator changes, and less frequent garbage collection, but it
 		 * also means less frequent IO or higher request throughput.
 		 */
-		CHECKPOINT_INTERVAL(400),
+		CHECKPOINT_INTERVAL(1),
 
 		/**
 		 * Value of initial state used by the default service name (

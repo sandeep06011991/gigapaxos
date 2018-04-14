@@ -18,7 +18,7 @@ public class TxAbortProtocolTask<NodeIDType>
 //    FIXME: There should be a retry mechanism
     TreeSet<String> unlockList;
 
-    TxAbortProtocolTask(Transaction transaction, ProtocolExecutor protocolExecutor) {
+    public TxAbortProtocolTask(Transaction transaction, ProtocolExecutor protocolExecutor) {
         super(transaction, protocolExecutor);
         unlockList = transaction.getLockList();
     }

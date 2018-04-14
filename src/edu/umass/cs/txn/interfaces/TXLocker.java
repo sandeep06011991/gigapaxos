@@ -2,6 +2,8 @@ package edu.umass.cs.txn.interfaces;
 
 import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
 import edu.umass.cs.txn.exceptions.TXException;
+import edu.umass.cs.txn.exceptions.TxnState;
+import edu.umass.cs.txn.txpackets.TxState;
 
 /**
  * @author arun
@@ -28,4 +30,8 @@ public interface TXLocker {
 	public boolean unlock(String serviceName,String lockID) ;
 
 	public boolean isLockedByTxn(String serviceName, String txId);
+
+	public void updateStateMap(String serviceName,TxnState state );
+
+	public TxnState getStateMap(String serviceName);
 }

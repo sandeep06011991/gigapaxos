@@ -76,14 +76,14 @@ public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> impleme
 		}
 
 		void operate(OperateRequest.Operation operation,int obj){
-//			try{
-//				/*Make this a long blocking operation when testing for abort*/
-//				System.out.println("Begin sleep for 30 sec");
-//				TimeUnit.SECONDS.sleep(30);
-//				System.out.println("End sleep for 30 sec");
-//			}catch (Exception e){
-//				e.printStackTrace();
-//			}
+			try{
+				/*Make this a long blocking operation when testing for abort*/
+				System.out.println("Begin sleep for 30 sec");
+				TimeUnit.SECONDS.sleep(30);
+				System.out.println("End sleep for 30 sec");
+			}catch (Exception e){
+				e.printStackTrace();
+			}
 			switch (operation){
 				case add:
 					state = state + obj;
@@ -133,7 +133,7 @@ public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> impleme
 			return true;
 		}
 		if(request instanceof OperateRequest){
-			System.out.println("Operate option");
+		System.out.println("Operate option"+request.toString());
 			OperateRequest operateRequest = (OperateRequest)request;
 			String name=operateRequest.getServiceName();
 			AppData ap=appData.get(name);

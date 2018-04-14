@@ -412,16 +412,19 @@ public abstract class AbstractReplicaCoordinator<NodeIDType> implements
 
 	@Override
 	public String checkpoint(String name) {
-		String state = null;
-		return this.stopCallback != null
+		String state =  this.stopCallback != null
 				&& (state = this.stopCallback.preCheckpoint(name)) != null ? state
-				: app.checkpoint(name);
+				: (this.callback!=null && (state = this.callback.preCheckpoint(name))!=null) ? state: app.checkpoint(name);
+//		System.out.println("Attempting to checkpoint "+state);
+		return state;
 	}
 
 	@Override
 	public boolean restore(String name, String state) {
 		return this.stopCallback != null
 				&& this.stopCallback.preRestore(name, state) ? true
+
+		:this.callback!=null &&this.callback.preRestore(name,state) ? true
 
 		/* Will be a no-op except during recovery when stopCallback will be null
 		 * as it wouldn't yet have been set. */
