@@ -259,6 +259,9 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 					return new TxStateRequest(jsonObject);
 				case TX_CLIENT:
 					return new TxClientRequest(jsonObject,this.getCoordinator());
+				case TX_CLIENT_RESPONSE:
+					return new TxClientResult(jsonObject);
+
 				default:
 						throw new RuntimeException("Forgot handling some TX packet");
 				}
@@ -298,6 +301,18 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	@Override
 	public boolean preExecuted(Request request) {
 		if(request==null){return false;}
+
+		if(request instanceof TxClientResult) {
+			TxClientResult txClientResult = (TxClientResult) request;
+			try {
+				System.out.println("Sending to client from entry server"+txClientResult.toString());
+				((JSONMessenger)this.getMessenger()).sendClient(txClientResult.getClientAddr(),txClientResult,txClientResult.getServerAddr());
+			} catch (JSONException|IOException e) {
+				System.out.println("Unable to send to client");
+			}
+			return true;
+		}
+
 		if(request instanceof TxClientRequest) {
 			TxClientRequest txClientRequest=(TxClientRequest)request;
 			Transaction transaction = new Transaction(txClientRequest.recvrAddr,
@@ -315,11 +330,10 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 //		FIXME: and inside the secondary transaction protocol
 		if(request instanceof TXInitRequest){
 			TXInitRequest trx=(TXInitRequest)request;
-				if(trx.transaction.nodeId.equals(getMyID())){
-					System.out.println("Initiating Primary Transaction	"+getMyID());
+				if(trx.transaction.nodeId.equals(this.getMyID())){
+					System.out.println("Initiating Primary Transaction,leader:"+getMyID());
 					this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(trx.transaction,protocolExecutor));
 				}else{
-					System.out.println("Initiating Secondary Transaction");
 					this.protocolExecutor.spawnIfNotRunning(
 							new TxSecondaryProtocolTask<>
 									(trx.transaction,TxState.INIT,protocolExecutor));
@@ -388,19 +402,24 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			TXTakeover txRequest=(TXTakeover)request;
 			TransactionProtocolTask protocolTask=(TransactionProtocolTask) protocolExecutor.getTask(txRequest.txid);
 			boolean isPrimary=txRequest.getNewLeader().equals((String)getMyID());
+			assert protocolTask != null;
 			ProtocolTask newProtocolTask = protocolTask.onTakeOver(txRequest,isPrimary);
-			protocolTask.cancel();
-			protocolExecutor.spawn(newProtocolTask);
+			if(isPrimary){System.out.println("My takeover successfull I,"+getMyID()+ " am leader ");}
+			if(newProtocolTask!=null){
+				protocolTask.cancel();
+				protocolExecutor.spawn(newProtocolTask);
+				}
 			return true;
-			}
+		}
 		if((request instanceof ClientRequest)){
 			if(txLocker.isAllowedRequest((ClientRequest) request)){
 				return false;
-			}
+				}
 //			FixMe: Can do some Exception handling here
 			System.out.println("DROPPING REQUEST. SYSTEM BUSY");
 			return true;
 		}
+
 		return false;
 	}
 

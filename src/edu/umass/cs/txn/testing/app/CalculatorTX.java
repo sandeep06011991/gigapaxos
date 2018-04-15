@@ -78,21 +78,22 @@ public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> impleme
 		void operate(OperateRequest.Operation operation,int obj){
 			try{
 				/*Make this a long blocking operation when testing for abort*/
-				System.out.println("Begin sleep for 30 sec");
-				TimeUnit.SECONDS.sleep(30);
-				System.out.println("End sleep for 30 sec");
+//				System.out.println("Begin sleep for 5 sec");
+				TimeUnit.SECONDS.sleep(10);
+//				System.out.println("End sleep for 5 sec");
 			}catch (Exception e){
 				e.printStackTrace();
 			}
 			switch (operation){
 				case add:
 					state = state + obj;
+					System.out.println("After executing add "+name+"="+state);
 					break;
 				case multiply:
 					state = state *obj;
+					System.out.println("After executing add "+name+"="+state);
 					break;
 			}
-			System.out.println("Final State:"+name+"	"+state);
 
 		}
 	}
@@ -140,7 +141,7 @@ public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> impleme
 			ap.operate(operateRequest.operation,operateRequest.object);
 			return true;
 		}
-
+		System.out.println("Request Unimpelemnted"+request.toString());
 		throw new RuntimeException("unimplemented");
 	}
 

@@ -36,6 +36,7 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
 
     AbstractReplicaCoordinator abstractReplicaCoordinator;
 
+
     public TxMessenger(ReconfigurableAppClientAsync gpClient, AbstractReplicaCoordinator abstractReplicaCoordinator) {
         this.gpClient = gpClient;
         this.abstractReplicaCoordinator=abstractReplicaCoordinator;
@@ -47,13 +48,22 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
         }
         try {
             if(message instanceof TXTakeover){
+                System.out.println(getMyID()+ "is attempting a takeover");
                 ((TXTakeover) message).setNewLeader((String)getMyID());
             }
             if(message instanceof TxClientResult){
                 TxClientResult txClientResult = (TxClientResult) message;
                 try {
-                    ((JSONMessenger) (this.abstractReplicaCoordinator.getMessenger())).sendClient(txClientResult.getClientAddr()
-                            , txClientResult, txClientResult.getServerAddr());
+                    if(!this.abstractReplicaCoordinator.getMessenger().getListeningSocketAddress().equals(txClientResult.getServerAddr())){
+                        System.out.println("Indirect response:send to entry server");
+                        ((JSONMessenger) (this.abstractReplicaCoordinator.getMessenger())).sendClient(txClientResult.getServerAddr(),
+                                txClientResult);
+
+                    }else{
+                        ((JSONMessenger) (this.abstractReplicaCoordinator.getMessenger())).sendClient(txClientResult.getClientAddr()
+                                ,txClientResult,txClientResult.getServerAddr());
+
+                    }
                 }catch(JSONException ex){
                     throw new RuntimeException("Failed to send Response to client");
                 }
@@ -116,7 +126,7 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
 
     @Override
     public NodeIDType getMyID() {
-        return null;
+        return (NodeIDType) abstractReplicaCoordinator.getMyID();
 //        throw new RuntimeException("TxMessengerFunction not required");
     }
 

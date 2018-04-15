@@ -126,7 +126,13 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
         });
 
-        sendRequest(txClientRequest1, entryServer, new RequestCallback() {
+        sendRequest(txClientRequest1, entryServer, new TimeoutRequestCallback() {
+            @Override
+            public long getTimeout() {
+                return 600*1000;
+            }
+
+
             @Override
             public void handleResponse(Request response) {
                 assert response instanceof TxClientResult;
@@ -148,6 +154,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
         TxClientRequest txClientRequest = new TxClientRequest(requests);
         System.out.println("Attempting Send ");
         RequestFuture rd= sendRequestAnycast(txClientRequest, new RequestCallback() {
+
             @Override
             public void handleResponse(Request response) {
                 if(response instanceof TxClientResult){
@@ -180,6 +187,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
                 return new ResultRequest(jsonObject);
             }
             if(jsonObject.getInt("type")==262){
+                System.out.println(stringified);
                 return new TxClientResult(jsonObject);
             }
         } catch ( JSONException e) {

@@ -8,10 +8,7 @@ import edu.umass.cs.protocoltask.SchedulableProtocolTask;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.txn.DistTransactor;
 import edu.umass.cs.txn.Transaction;
-import edu.umass.cs.txn.txpackets.TXPacket;
-import edu.umass.cs.txn.txpackets.TXTakeover;
-import edu.umass.cs.txn.txpackets.TxState;
-import edu.umass.cs.txn.txpackets.TxStateRequest;
+import edu.umass.cs.txn.txpackets.*;
 
 import java.util.HashSet;
 import java.util.Random;
@@ -22,14 +19,19 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
 
     TxState state;
 
+    long period;
 
-
+    TXTakeover request;
 
     public TxSecondaryProtocolTask(Transaction transaction, TxState state
             , ProtocolExecutor protocolExecutor){
 
         super(transaction,protocolExecutor);
         this.state=state;
+
+        this.period =  (10+new Random().nextInt(30))*1000;
+        request=new TXTakeover(TXPacket.PacketType.TX_TAKEOVER,transaction.getTXID());
+        System.out.println("Secondary inititated with timeout "+period);
     }
 
     public TxState getState() {
@@ -65,18 +67,21 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
     @Override
     public GenericMessagingTask<NodeIDType, ?>[]
     handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType,TXPacket.PacketType, String>[] ptasks) {
-        throw new RuntimeException("Should never be called");
+//        This state does  not handle any events
+//            FIXME: Pull request in gigapaxos, check the keytype before handling an event
+            return null;
+//        throw new RuntimeException("Should never be called");
     }
 
     @Override
     public GenericMessagingTask<NodeIDType, ?>[] start() {
-        return null;
+         return  null;
     }
 
     @Override
     public Set<TXPacket.PacketType> getEventTypes() {
         Set<TXPacket.PacketType> txPackets=new HashSet<>();
-        txPackets.add(TXPacket.PacketType.TX_STATE_REQUEST);
+//        This does no packet handling
         return txPackets;
     }
 
@@ -87,7 +92,6 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
 
     @Override
     public GenericMessagingTask<NodeIDType, ?>[] restart() {
-        TXTakeover request=new TXTakeover(TXPacket.PacketType.TX_TAKEOVER,transaction.getTXID());
         return getMessageTask(request);
     }
 
@@ -96,7 +100,7 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
     public long getPeriod() {
 //        FIXME: Write a test that Test this getPeriod
 //        FIXME: Write a random wait Period generator
-        return  1000000000;
+        return  period;
     }
 
 

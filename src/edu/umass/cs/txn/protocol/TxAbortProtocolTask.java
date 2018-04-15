@@ -36,7 +36,9 @@ public class TxAbortProtocolTask<NodeIDType>
 
     @Override
     public TransactionProtocolTask onTakeOver(TXTakeover request, boolean isPrimary) {
-        if(isPrimary){throw new RuntimeException("Safety Violation");}
+        if(isPrimary){
+            return null;
+        }
         /*A primary would not issue a take over */
         return new TxSecondaryProtocolTask(transaction, TxState.ABORTED,protocolExecutor);
     }

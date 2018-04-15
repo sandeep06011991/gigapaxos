@@ -42,6 +42,8 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
         super(json);
         success = json.getBoolean("success");
         requestId = json.getLong("reqID");
+        clientAddr = getSocketAddrFromString(json.getString("clientAddr"));
+        serverAddr = getSocketAddrFromString(json.getString("serverAddr"));
 
     }
 
@@ -50,6 +52,8 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
         JSONObject jsonObject=super.toJSONObject();
         jsonObject.put("reqID",requestId);
         jsonObject.put("success",success);
+        jsonObject.put("clientAddr",clientAddr.toString());
+        jsonObject.put("serverAddr",serverAddr.toString());
         return jsonObject;
     }
 
@@ -58,6 +62,12 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
         return new JSONObject();
     }
 
+
+    private static InetSocketAddress getSocketAddrFromString(String str){
+        str = str.replace("/","");
+        String[] a= str.split(":");
+        return new InetSocketAddress(a[0],Integer.parseInt(a[1]));
+    }
 
     @Override
     public IntegerPacketType getRequestType() {
