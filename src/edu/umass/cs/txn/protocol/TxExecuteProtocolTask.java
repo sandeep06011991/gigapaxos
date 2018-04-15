@@ -58,8 +58,10 @@ public class TxExecuteProtocolTask<NodeIDType>
         if((event instanceof TXResult)&&(((TXResult) event).opPacketType==TXPacket.PacketType.TX_OP_REQUEST)){
             TXResult txResult=(TXResult)event;
             System.out.println("Recieved Operation"+txResult.getOpId());
-            assert toExecuteRequests.get(0) == Long.parseLong(txResult.getOpId());
-            toExecuteRequests.remove(0);
+            if(toExecuteRequests.get(0) == Long.parseLong(txResult.getOpId())){
+//               because an older request could be recieved
+                toExecuteRequests.remove(0);
+            }
             if(toExecuteRequests.isEmpty()){
                 TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(),TxState.COMMITTED);
                 System.out.println("Execute Phase Complete");

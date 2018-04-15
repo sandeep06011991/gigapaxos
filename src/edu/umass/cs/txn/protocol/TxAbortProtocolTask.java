@@ -55,7 +55,11 @@ public class TxAbortProtocolTask<NodeIDType>
         if(unlockList.isEmpty()){
             TxClientResult result=new TxClientResult(transaction.requestId,false,transaction.entryServer,transaction.clientAddr);
             System.out.println("Complete and Cancelled");
-            return getMessageTask(result);
+            ArrayList<Request> re= new ArrayList<>();
+            TxStateRequest request=new TxStateRequest(transaction.getTXID(),TxState.COMPLETE);
+            re.add(request);
+            re.add(result);
+            return getMessageTask(re);
         }
         return null;
     }
@@ -82,6 +86,12 @@ public class TxAbortProtocolTask<NodeIDType>
     @Override
     public String getKey() {
         return transaction.getTXID();
+    }
+
+    @Override
+    public GenericMessagingTask<NodeIDType, ?>[] restart() {
+//            FIXME: To build an exponential back off
+        return start();
     }
 
 }

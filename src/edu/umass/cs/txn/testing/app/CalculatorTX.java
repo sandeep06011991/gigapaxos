@@ -76,14 +76,14 @@ public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> impleme
 		}
 
 		void operate(OperateRequest.Operation operation,int obj){
-			try{
-				/*Make this a long blocking operation when testing for abort*/
+//			try{
+//				/*Make this a long blocking operation when testing for abort*/
 //				System.out.println("Begin sleep for 5 sec");
-				TimeUnit.SECONDS.sleep(10);
-//				System.out.println("End sleep for 5 sec");
-			}catch (Exception e){
-				e.printStackTrace();
-			}
+//				TimeUnit.SECONDS.sleep(20);
+////				System.out.println("End sleep for 5 sec");
+//			}catch (Exception e){
+//				e.printStackTrace();
+//			}
 			switch (operation){
 				case add:
 					state = state + obj;

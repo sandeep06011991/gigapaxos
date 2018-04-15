@@ -61,6 +61,11 @@ public class DynamoReplicaCoordinator<NodeIDType> extends
 	}
 
 	@Override
+	public void initRecovery() {
+		throw new RuntimeException("incomplete code");
+	}
+
+	@Override
 	public Set<IntegerPacketType> getRequestTypes() {
 		return this.app.getRequestTypes();
 	}

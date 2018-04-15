@@ -1,4 +1,4 @@
-Question
+Reasons why I did something ??
 
 When a server is restarted the PRC recovers completely and then hands off the the App
 The recovery of the PRC happens when it is constructed
@@ -15,7 +15,7 @@ FEATURES TO BUILD
 4. Abort and rollback the transaction (LONG)
 5. Checkpoint and restore (OK)
 6.5 Test abort sequence
-6. Run test for NOOP transactions
+w6. Run test for NOOP transactions
 7. Fixed Groups part <RELATIVELY EASY>
 8. Transactional Creates
 
@@ -27,7 +27,7 @@ TEST EVERYTHING
 Things to write about
 1. Complete Protocol Description
 2. Write trade of 90 %
-3. Write up about Trade off with networking 
+3. Write up about Trade off with networking
 4.
 
 

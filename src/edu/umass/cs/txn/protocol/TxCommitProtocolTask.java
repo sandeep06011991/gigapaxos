@@ -96,4 +96,9 @@ public  class TxCommitProtocolTask<NodeIDType> extends
         return transaction.getTXID();
     }
 
+    @Override
+    public GenericMessagingTask<NodeIDType, ?>[] restart() {
+//            FIXME: To build an exponential back off
+            return start();
+        }
 }

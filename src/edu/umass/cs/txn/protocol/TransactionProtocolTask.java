@@ -4,22 +4,27 @@ import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.nio.GenericMessagingTask;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
+import edu.umass.cs.protocoltask.SchedulableProtocolTask;
 import edu.umass.cs.txn.Transaction;
 import edu.umass.cs.txn.txpackets.TXPacket;
 import edu.umass.cs.txn.txpackets.TXTakeover;
+import edu.umass.cs.txn.txpackets.TxState;
 import edu.umass.cs.txn.txpackets.TxStateRequest;
 
 import java.util.ArrayList;
 
 abstract public class TransactionProtocolTask<NodeIDType> implements
-        ProtocolTask<NodeIDType, TXPacket.PacketType, String> {
+        SchedulableProtocolTask<NodeIDType, TXPacket.PacketType, String> {
 
     Transaction transaction;
 
     ProtocolExecutor protocolExecutor;
 
-    TransactionProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor){
+    int retry = 0;
 
+    final int MAX_RETRY=3;
+
+    TransactionProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor){
         this.transaction=transaction;
         this.protocolExecutor=protocolExecutor;
     }
@@ -32,7 +37,7 @@ abstract public class TransactionProtocolTask<NodeIDType> implements
     public ProtocolExecutor getProtocolExecutor() {
         return protocolExecutor;
     }
-
+//  FixME: Is this dummy required. If so write a justification
     static Object[] dummy={null,null};
 
     public GenericMessagingTask<NodeIDType, ?>[] getMessageTask(Request request){
@@ -68,5 +73,24 @@ abstract public class TransactionProtocolTask<NodeIDType> implements
 //        FIXME: Is there a better way to cancel a task
         protocolExecutor.remove(this.getKey());
     }
+
+    @Override
+    public GenericMessagingTask<NodeIDType, ?>[] restart() {
+        retry++;
+        if(retry <=MAX_RETRY){
+            return start();
+        }
+        TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(), TxState.ABORTED);
+        System.out.println("Protocol task has timed out");
+        return getMessageTask(stateRequest);
+    }
+
+    @Override
+    public long getPeriod() {
+//        FIXME: Write a test that Test this getPeriod
+//        FIXME: Write a random wait Period generator
+        return  10000;
+    }
+
 }
 

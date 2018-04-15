@@ -47,6 +47,7 @@ public class TXLockerMap implements TXLocker {
 	public boolean lock(String serviceName,String lockID){
 		if(txMap.containsKey(serviceName)){
 			String currlockId=txMap.get(serviceName);
+//			Lock requests are idempotent
 			return currlockId.equals(lockID);
 		}
 		if(!(txMap.containsKey(serviceName))){
@@ -79,8 +80,11 @@ public class TXLockerMap implements TXLocker {
 				txnStateHashMap.remove(serviceName);
 				return true;
 			}
+//			When tx1 tries to unlock locks held by tx2
+			return false;
 		}
-		return false;
+//		unlock requests are idempotent
+		return true;
 	}
 /* Returns
 * 	handled: false if this is a new request
