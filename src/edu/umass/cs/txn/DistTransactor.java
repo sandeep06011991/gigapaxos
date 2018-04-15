@@ -390,6 +390,10 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 
 		if(request instanceof TxStateRequest){
 			TransactionProtocolTask protocolTask=(TransactionProtocolTask) protocolExecutor.getTask(((TxStateRequest) request).getTXID());
+			if(protocolTask==null){
+//				This transaction must have already been completed by a previous one
+				return true;
+			}
 			ProtocolTask newProtocolTask=protocolTask.onStateChange((TxStateRequest) request);
 			protocolExecutor.remove((String)protocolTask.getKey());
 			if(newProtocolTask!=null)protocolExecutor.spawn(newProtocolTask);
@@ -441,7 +445,6 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 				jsonObject.put("leader",leaderStateHashMap.get(name).toJSONObject(name));
 			}
 
-		System.out.println("Current Checkpoint"+jsonObject.toString());
 		return jsonObject.toString();
 		}catch(JSONException ex){
 			throw new RuntimeException("Conversion to JSON is flawed");
@@ -451,7 +454,13 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 
 	public boolean preRestore(String name, String state) {
 		try {
-			System.out.println("Attempting to restore"+name+"	: "+state);
+			JSONObject jsonObject = new JSONObject(state);
+		}catch (JSONException ex){
+			return false;
+		}
+
+		try {
+//			System.out.println("Attempting to restore"+name+"	: "+state);
 			JSONObject jsonObject = new JSONObject(state);
 			if(jsonObject.has("txLocker")){
 				TxnState txnState=new TxnState(jsonObject.getJSONObject("txLocker"));
@@ -490,11 +499,12 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			}
 			return true;
 		}catch(JSONException j){
+			j.printStackTrace();
 			System.out.println("not a jsonObject" +state);
 		}catch(RequestParseException rpe){
 			System.out.println("not a request");
 		}
-		System.out.println("Flowing into the system "+name+":"+state);
+//		System.out.println("Flowing into the system "+name+":"+state);
 		return false;
 	}
 

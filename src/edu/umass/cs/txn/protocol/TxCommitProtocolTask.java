@@ -27,10 +27,13 @@ public  class TxCommitProtocolTask<NodeIDType> extends
     @Override
     public TransactionProtocolTask onStateChange(TxStateRequest request) {
         if(request.getState() == TxState.COMPLETE){
-            System.out.println("Commit Sequence complete");
+            System.out.println("Commit Sequence complete!!!!!!!!!!!!!!!!");
             return null;
         }
-      throw new RuntimeException("To change state from Commit is a safety violation");
+        if(request.getState() == TxState.COMMITTED){
+            return new TxCommitProtocolTask(transaction,protocolExecutor);
+        }
+      throw new RuntimeException("To change state from Commit to"+ request.getState()+"is a safety violation");
     }
 
     @Override
@@ -70,6 +73,7 @@ public  class TxCommitProtocolTask<NodeIDType> extends
     public GenericMessagingTask<NodeIDType, ?>[] start() {
 //        FIXME: Forgot to clean this code
         awaitingUnLock = transaction.getLockList();
+        if(awaitingUnLock.isEmpty()){return  getMessageTask(new TxStateRequest(transaction.getTXID(),TxState.COMPLETE));}
         ArrayList<Request> requests=new ArrayList<>();
         for (String t : awaitingUnLock) {
 //          Low Priority: cleaner method exists

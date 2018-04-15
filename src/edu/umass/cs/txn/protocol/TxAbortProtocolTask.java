@@ -26,10 +26,13 @@ public class TxAbortProtocolTask<NodeIDType>
     @Override
     public TransactionProtocolTask onStateChange(TxStateRequest request) {
         if(TxState.COMPLETE == request.getState()){
-            System.out.println("Abort sequence completed");
+            System.out.println("Abort sequence completed!!!!!!!!!!!!!!!!!!");
             return null;
         }
-        throw new RuntimeException("Safety Violation");
+        if(request.getState() == TxState.ABORTED){
+            return new TxAbortProtocolTask(transaction,protocolExecutor);
+        }
+        throw new RuntimeException("To change state from Abort to"+ request.getState()+"is a safety violation");
         /*  Only a primary can initite state change and if if there is a another primary, a state change request
              * would be processed before this is handled */
     }

@@ -20,7 +20,7 @@ public class OngoingTxn {
         JSONObject toJSONObject() throws JSONException {
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("txId",txId);
-            jsonObject.put("transaction",transaction);
+            jsonObject.put("transaction",transaction.toJSONObject());
             jsonObject.put("txState",TxState. getIntFromTxState((txState)));
             return jsonObject;
         }
@@ -28,7 +28,7 @@ public class OngoingTxn {
         OngoingTxn(JSONObject jsonObject, AppRequestParser appRequestParser) throws JSONException{
             txId =  jsonObject.getString("txId");
             transaction = new Transaction(jsonObject.getJSONObject("transaction"),appRequestParser);
-            txState = TxState.getTxStateFromInt(jsonObject.getInt("txId"));
+            txState = TxState.getTxStateFromInt(jsonObject.getInt("txState"));
         }
 
 }

@@ -51,8 +51,9 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
             return null;
         }
         if((state != TxState.INIT ) && (newState !=state)){
-           throw new RuntimeException("SAFETY VOILATION");
+           System.out.println("Changing state to"+newState );
         }
+        System.out.println("New Secondary with task " + newState);
         return new TxSecondaryProtocolTask(transaction,newState,getProtocolExecutor());
     }
 
