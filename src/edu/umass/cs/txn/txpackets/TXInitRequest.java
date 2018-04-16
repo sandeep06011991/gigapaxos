@@ -14,7 +14,7 @@ public class TXInitRequest extends TXPacket{
 
 
     public TXInitRequest(Transaction transaction) {
-        super(PacketType.TX_INIT, transaction.getTXID());
+        super(PacketType.TX_INIT, transaction.getTXID(),transaction.getLeader());
         this.transaction=transaction;
     }
 

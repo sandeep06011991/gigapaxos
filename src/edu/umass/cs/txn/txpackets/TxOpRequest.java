@@ -32,8 +32,8 @@ public class TxOpRequest extends TXPacket  {
 	 * @param txid
 	 * @param request
 	 */
-	public TxOpRequest(String txid, ClientRequest request) {
-		super(TXPacket.PacketType.TX_OP_REQUEST, txid);
+	public TxOpRequest(String txid, ClientRequest request,String leader) {
+		super(TXPacket.PacketType.TX_OP_REQUEST, txid,leader);
 		this.request = request;
 		this.opId = request.getRequestID();
 	}

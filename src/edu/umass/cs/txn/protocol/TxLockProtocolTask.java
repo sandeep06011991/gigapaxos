@@ -65,7 +65,7 @@ public class TxLockProtocolTask<NodeIDType> extends
             String opId=txResult.getOpId();
             //FIXME: Is there a better way to map lock opId to Lock requests
             if(txResult.isFailed()){
-                TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(),TxState.ABORTED);
+            TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(),TxState.ABORTED, this.transaction.getLeader());
                 System.out.println("Locks"  +   txResult.getOpId()+  " must be busy");
                 return getMessageTask(stateRequest);
             }
@@ -86,7 +86,7 @@ public class TxLockProtocolTask<NodeIDType> extends
         ArrayList<Request> requests=new ArrayList<>();
         for (String t : awaitingLock) {
 //          Low Priority: cleaner method exists
-            LockRequest lockRequest = new LockRequest(t, transaction.getTXID());
+            LockRequest lockRequest = new LockRequest(t, transaction.getTXID(),transaction.getLeader());
             requests.add(lockRequest);
 
             }

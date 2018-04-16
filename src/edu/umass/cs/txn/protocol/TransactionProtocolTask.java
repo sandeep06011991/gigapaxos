@@ -80,7 +80,7 @@ abstract public class TransactionProtocolTask<NodeIDType> implements
         if(retry <=MAX_RETRY){
             return start();
         }
-        TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(), TxState.ABORTED);
+        TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(), TxState.ABORTED,transaction.getLeader());
         System.out.println("Protocol task has timed out");
         return getMessageTask(stateRequest);
     }

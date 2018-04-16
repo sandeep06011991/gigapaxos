@@ -15,8 +15,8 @@ import edu.umass.cs.txn.Transaction;
 public class CommitRequest extends TXPacket {
 
 
-	public CommitRequest(String txId) {
-		super(PacketType.COMMIT_REQUEST, txId);
+	public CommitRequest(String txId,String leader) {
+		super(PacketType.COMMIT_REQUEST, txId, leader);
 	}
 
 	public CommitRequest(JSONObject json) throws JSONException {

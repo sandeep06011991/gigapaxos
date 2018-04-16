@@ -2,6 +2,7 @@ package edu.umass.cs.txn;
 
 import java.net.InetSocketAddress;
 
+import java.security.Key;
 import java.util.ArrayList;
 import java.util.TreeSet;
 
@@ -39,7 +40,7 @@ import redis.clients.jedis.Client;
 public class Transaction extends JSONObject {
 
 	protected static enum Keys {
-		OPS, TXID, DELETES,NODEID,REQUESTID,CLIENTADDR,ENTRYSERVER
+		OPS, TXID, DELETES,NODEID,REQUESTID,CLIENTADDR,ENTRYSERVER,LEADER
 	}
 
 
@@ -58,8 +59,13 @@ public class Transaction extends JSONObject {
 	ArrayList<ClientRequest> requests;
 	/**
 	 * @param entryServer
+	 *
+	 *
 	 */
-	public Transaction(InetSocketAddress entryServer ,ArrayList<ClientRequest> requests,String nodeId,InetSocketAddress clientAddr,long requestId) {
+
+	final String leader;
+
+	public Transaction(InetSocketAddress entryServer ,ArrayList<ClientRequest> requests,String nodeId,InetSocketAddress clientAddr,long requestId,String leader) {
 		this.txnId = getNewTxid(entryServer);
 		this.entryServer = entryServer;
 //		FIXME: Should this really be a request
@@ -67,6 +73,7 @@ public class Transaction extends JSONObject {
 		this.nodeId=nodeId;
 		this.clientAddr = clientAddr;
 		this.requestId = requestId;
+		this.leader = leader;
 	}
 
 	/**
@@ -136,6 +143,7 @@ public class Transaction extends JSONObject {
 		if(requestId!=-1){jsonObject.put(Keys.REQUESTID.toString(),requestId);}
 		jsonObject.put(Keys.CLIENTADDR.toString(),clientAddr);
 		jsonObject.put(Keys.ENTRYSERVER.toString(),entryServer);
+		jsonObject.put(Keys.LEADER.toString(),leader);
 		return jsonObject;
 	}
 
@@ -161,7 +169,11 @@ public class Transaction extends JSONObject {
 		requestId = jsonObject.getLong(Keys.REQUESTID.toString());
 		clientAddr = getSocketAddrFromString(jsonObject.getString(Keys.CLIENTADDR.toString()));
 		entryServer=getSocketAddrFromString(jsonObject.getString(Keys.ENTRYSERVER.toString()));
+		leader = jsonObject.getString(Keys.LEADER.toString());
 	}
+
+
+	public String getLeader(){return  leader;}
 
 }
 

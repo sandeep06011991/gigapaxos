@@ -13,8 +13,8 @@ public class TxStateRequest extends TXPacket {
 //	FIXME: Should this be public
 	TxState state;
 
-	public TxStateRequest(String txId,TxState state) {
-		super(TXPacket.PacketType.TX_STATE_REQUEST, txId);
+	public TxStateRequest(String txId,TxState state,String leader) {
+		super(TXPacket.PacketType.TX_STATE_REQUEST, txId,leader);
 		this.state=state;
 	}
 

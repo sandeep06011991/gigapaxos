@@ -17,8 +17,8 @@ public class LockRequest extends TXPacket {
 	private final String serviceName;
 
 
-	public LockRequest(String serviceName ,String txId){
-		super(PacketType.LOCK_REQUEST,txId);
+	public LockRequest(String serviceName ,String txId,String leader){
+		super(PacketType.LOCK_REQUEST,txId,leader);
 		this.serviceName = serviceName;
 	}
 	/**

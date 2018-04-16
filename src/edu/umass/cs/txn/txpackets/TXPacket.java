@@ -11,6 +11,7 @@ import edu.umass.cs.reconfiguration.interfaces.ReplicableRequest;
 import edu.umass.cs.txn.exceptions.ResponseCode;
 import edu.umass.cs.utils.IntegerPacketTypeMap;
 
+import java.security.Key;
 import java.util.Random;
 
 /**
@@ -99,8 +100,10 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 
 	long requestId;
 
+	final String leader;
+
 	private static enum Keys {
-		TXID, LOCKID, INITIATOR,REQUESTID,
+		TXID, LOCKID, INITIATOR,REQUESTID,LEADER,
 	}
 
 	static Random random=new Random();
@@ -108,10 +111,11 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	 * @param t
 	 * @param txid 
 	 */
-	public TXPacket(IntegerPacketType t, String txid) {
+	public TXPacket(IntegerPacketType t, String txid,String leader) {
 		super(t);
 		this.txid = txid;
 		this.requestId=random.nextLong();
+		this.leader = leader;
 	}
 
 
@@ -123,6 +127,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 		super(json);
 		this.txid = json.getString(Keys.TXID.toString());
 		this.requestId=json.getLong(Keys.REQUESTID.toString());
+		this.leader = json.getString(Keys.LEADER.toString());
 	}
 
 	@Override
@@ -134,7 +139,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 	@Override
 	public String getServiceName() {
 		// FIXME: This works for fixed groups only
-		return "Service_name_txn";
+		return leader;
 	}
 
 	@Override
@@ -176,6 +181,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 		JSONObject jsonObject=super.toJSONObject();
 		jsonObject.put(Keys.TXID.toString(),txid);
 		jsonObject.put(Keys.REQUESTID.toString(),this.requestId);
+		jsonObject.put(Keys.LEADER.toString(),leader);
 		return jsonObject;
 	}
 
@@ -198,5 +204,5 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 		throw new RuntimeException("set Key event should never be called");
 	}
 
-
+	public String getLeader(){return  leader;}
 }

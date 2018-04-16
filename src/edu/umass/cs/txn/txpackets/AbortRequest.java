@@ -13,8 +13,8 @@ import org.json.JSONObject;
 public class AbortRequest extends TXPacket {
 
 
-	public AbortRequest( String txid) {
-		super(PacketType.ABORT_REQUEST, txid);
+	public AbortRequest( String txid,String leader) {
+		super(PacketType.ABORT_REQUEST, txid,leader);
 	}
 
 	@Override

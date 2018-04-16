@@ -314,9 +314,11 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		}
 
 		if(request instanceof TxClientRequest) {
+			String leader = "Service_name_txn";
 			TxClientRequest txClientRequest=(TxClientRequest)request;
 			Transaction transaction = new Transaction(txClientRequest.recvrAddr,
-					((TxClientRequest) request).getRequests(), (String) getMyID(),txClientRequest.clientAddr,txClientRequest.getRequestID());
+					((TxClientRequest) request).getRequests(), (String) getMyID(),
+					txClientRequest.clientAddr,txClientRequest.getRequestID(),leader);
 			try {
 					this.gpClient.sendRequest(new TXInitRequest(transaction));
 
@@ -352,7 +354,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			boolean success=txLocker.lock(lockRequest.getServiceName(),lockRequest.txid);
 			TXResult result=
 					new TXResult(lockRequest.txid,lockRequest.getTXPacketType(),
-							success,(String) lockRequest.getKey(),lockRequest.getServiceName());
+							success,(String) lockRequest.getKey(),lockRequest.getServiceName(),lockRequest.getLeader());
 			result.setRequestId(lockRequest.getRequestID());
 			lockRequest.response=result;
 			return true;
@@ -362,10 +364,13 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			UnlockRequest unlockRequest=(UnlockRequest)request ;
 			boolean success=false;
 			if(txLocker.isLockedByTxn(unlockRequest.getServiceName(),unlockRequest.getLockID())){
+				if(!unlockRequest.isCommited()){
+					restore(unlockRequest.getServiceName(),txLocker.getStateMap(unlockRequest.getServiceName()).state);
+				}
 				success=txLocker.unlock(unlockRequest.getServiceName(),unlockRequest.txid);
 			}
 			TXResult txResult= new TXResult(unlockRequest.txid,unlockRequest.getTXPacketType(),
-					success,(String) unlockRequest.getKey(),unlockRequest.getServiceName());;
+					success,(String) unlockRequest.getKey(),unlockRequest.getServiceName(),unlockRequest.getLeader());;
 			txResult.setRequestId(unlockRequest.getRequestID());
 			unlockRequest.response=txResult;
 /*If 2 unlock requests where sent by the same co-ordinator and response is reordered
@@ -382,7 +387,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 				if(!handled) this.execute(txOpRequest.request,true,null);
 			}
 			TXResult result=new TXResult(txOpRequest.txid,txOpRequest.getTXPacketType(),success
-							,(String) txOpRequest.getKey(),Long.toString(txOpRequest.opId));
+							,(String) txOpRequest.getKey(),Long.toString(txOpRequest.opId),txOpRequest.getLeader());
 			result.setRequestId(txOpRequest.getRequestID());
 			txOpRequest.response=result;
 			return true;

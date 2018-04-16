@@ -24,8 +24,8 @@ public class TXResult extends TXPacket{
 
     public IntegerPacketType opPacketType;
 
-    public TXResult(String txid,TXPacket.PacketType packetType,boolean success,String key,String opId) {
-        super(PacketType.RESULT, txid);
+    public TXResult(String txid,TXPacket.PacketType packetType,boolean success,String key,String opId,String leader) {
+        super(PacketType.RESULT, txid,leader);
         opPacketType=packetType;
         this.success=success;
         this.key=key;

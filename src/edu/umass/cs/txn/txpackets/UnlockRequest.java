@@ -20,8 +20,8 @@ public class UnlockRequest extends TXPacket {
 	private final String txID;
 	private final boolean  commit;
 
-	public UnlockRequest(String serviceName, String txID,boolean commit) {
-		super(TXPacket.PacketType.UNLOCK_REQUEST, txID);
+	public UnlockRequest(String serviceName, String txID,boolean commit,String leader) {
+		super(TXPacket.PacketType.UNLOCK_REQUEST, txID, leader);
 		this.serviceName = serviceName;
 		this.txID = txID;
 		this.commit = commit;

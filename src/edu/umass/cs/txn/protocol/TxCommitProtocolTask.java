@@ -33,7 +33,11 @@ public  class TxCommitProtocolTask<NodeIDType> extends
         if(request.getState() == TxState.COMMITTED){
             return new TxCommitProtocolTask(transaction,protocolExecutor);
         }
-      throw new RuntimeException("To change state from Commit to"+ request.getState()+"is a safety violation");
+        System.out.println("As already decision is made to Commit,cannot "+request.getState());
+        return new TxCommitProtocolTask(transaction,protocolExecutor);
+
+
+//      throw new RuntimeException("To change state from Commit to"+ request.getState()+"is a safety violation");
     }
 
     @Override
@@ -58,7 +62,7 @@ public  class TxCommitProtocolTask<NodeIDType> extends
             if(awaitingUnLock.isEmpty()){
                 System.out.println("All unlocks recieved");
                 ArrayList<Request> re= new ArrayList<>();
-                TxStateRequest request=new TxStateRequest(transaction.getTXID(),TxState.COMPLETE);
+                TxStateRequest request=new TxStateRequest(transaction.getTXID(),TxState.COMPLETE,transaction.getLeader());
                 TxClientResult response = new TxClientResult(transaction,true);
                 re.add(request);
                 re.add(response);
@@ -73,11 +77,11 @@ public  class TxCommitProtocolTask<NodeIDType> extends
     public GenericMessagingTask<NodeIDType, ?>[] start() {
 //        FIXME: Forgot to clean this code
         awaitingUnLock = transaction.getLockList();
-        if(awaitingUnLock.isEmpty()){return  getMessageTask(new TxStateRequest(transaction.getTXID(),TxState.COMPLETE));}
+        if(awaitingUnLock.isEmpty()){return  getMessageTask(new TxStateRequest(transaction.getTXID(),TxState.COMPLETE,transaction.getLeader()));}
         ArrayList<Request> requests=new ArrayList<>();
         for (String t : awaitingUnLock) {
 //          Low Priority: cleaner method exists
-            UnlockRequest unlockRequest= new UnlockRequest(t, transaction.getTXID(),true);
+            UnlockRequest unlockRequest= new UnlockRequest(t, transaction.getTXID(),true,transaction.getLeader());
             requests.add(unlockRequest);
 
         }

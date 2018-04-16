@@ -32,7 +32,10 @@ public class TxAbortProtocolTask<NodeIDType>
         if(request.getState() == TxState.ABORTED){
             return new TxAbortProtocolTask(transaction,protocolExecutor);
         }
-        throw new RuntimeException("To change state from Abort to"+ request.getState()+"is a safety violation");
+
+        System.out.println("Ignoring this state:" + request.getState() + " change as decision is already made");
+        return new TxAbortProtocolTask(transaction,protocolExecutor);
+//        throw new RuntimeException("To change state from Abort to"+ request.getState()+"is a safety violation");
         /*  Only a primary can initite state change and if if there is a another primary, a state change request
              * would be processed before this is handled */
     }
@@ -59,7 +62,7 @@ public class TxAbortProtocolTask<NodeIDType>
             TxClientResult result=new TxClientResult(transaction.requestId,false,transaction.entryServer,transaction.clientAddr);
             System.out.println("Complete and Cancelled");
             ArrayList<Request> re= new ArrayList<>();
-            TxStateRequest request=new TxStateRequest(transaction.getTXID(),TxState.COMPLETE);
+            TxStateRequest request=new TxStateRequest(transaction.getTXID(),TxState.COMPLETE,transaction.getLeader());
             re.add(request);
             re.add(result);
             return getMessageTask(re);
@@ -71,7 +74,7 @@ public class TxAbortProtocolTask<NodeIDType>
     public GenericMessagingTask<NodeIDType, ?>[] start() {
         ArrayList<Request> requests = new ArrayList<>();
         for(String t: unlockList ){
-            UnlockRequest unlockRequest = new UnlockRequest(t,transaction.getTXID(),false);
+            UnlockRequest unlockRequest = new UnlockRequest(t,transaction.getTXID(),false,transaction.getLeader());
             requests.add(unlockRequest);
         }
         System.out.println("Abort Sequence initiated");

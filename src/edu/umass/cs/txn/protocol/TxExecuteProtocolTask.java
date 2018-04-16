@@ -63,7 +63,7 @@ public class TxExecuteProtocolTask<NodeIDType>
                 toExecuteRequests.remove(0);
             }
             if(toExecuteRequests.isEmpty()){
-                TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(),TxState.COMMITTED);
+                TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(),TxState.COMMITTED,this.transaction.getLeader());
                 System.out.println("Execute Phase Complete");
                 return getMessageTask(stateRequest);
             }else{
@@ -78,7 +78,7 @@ public class TxExecuteProtocolTask<NodeIDType>
         Long rqId = toExecuteRequests.get(0);
         ClientRequest toSend = map.get(rqId);
         System.out.println("Attempt operation "+toSend.getRequestID());
-        return  getMessageTask(new TxOpRequest(transaction.getTXID(),toSend));
+        return  getMessageTask(new TxOpRequest(transaction.getTXID(),toSend,this.transaction.getLeader()));
     }
 
     @Override

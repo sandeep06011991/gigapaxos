@@ -231,9 +231,9 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 //        }
 //        input.close();
         createSomething();
-        client.testGetRequest(10);
+//        client.testGetRequest(10);
 //        client = new TxnClient();
-//        client.testBasicCommit();
+        client.testBasicCommit();
 //          client.testMultiLineTxn();
 //          client.testAborting();
     }

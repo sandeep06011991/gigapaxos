@@ -31,7 +31,7 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
 
         this.period =  (120+new Random().nextInt(120))*1000;
         //Secondaries timeout after 2 min
-        request=new TXTakeover(TXPacket.PacketType.TX_TAKEOVER,transaction.getTXID());
+        request=new TXTakeover(TXPacket.PacketType.TX_TAKEOVER,transaction.getTXID(),transaction.getLeader());
         System.out.println("Secondary inititated with timeout "+period);
     }
 

@@ -9,8 +9,8 @@ public class TXTakeover extends TXPacket{
 //  Set by the Messenger before sending the Message
     String nodeId;
 
-    public TXTakeover(IntegerPacketType t, String txid) {
-        super(t, txid);
+    public TXTakeover(IntegerPacketType t, String txid,String leader) {
+        super(t, txid,leader);
 
     }
     @Override
