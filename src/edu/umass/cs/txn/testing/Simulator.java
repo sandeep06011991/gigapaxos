@@ -2,32 +2,35 @@ package edu.umass.cs.txn.testing;
 
 import edu.umass.cs.gigapaxos.PaxosConfig;
 import edu.umass.cs.gigapaxos.interfaces.*;
+import edu.umass.cs.gigapaxos.paxosutil.RateLimiter;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.CreateServiceName;
-import edu.umass.cs.txn.testing.app.*;
+import edu.umass.cs.txn.testing.app.CalculatorTX;
+import edu.umass.cs.txn.testing.app.GetRequest;
+import edu.umass.cs.txn.testing.app.OperateRequest;
+import edu.umass.cs.txn.testing.app.ResultRequest;
 import edu.umass.cs.txn.txpackets.TXPacket;
 import edu.umass.cs.txn.txpackets.TxClientRequest;
 import edu.umass.cs.txn.txpackets.TxClientResult;
+import edu.umass.cs.utils.Util;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import javax.sound.midi.SysexMessage;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
-
 /**
  * @author Sandeep
  *
  */
-public class TxnClient extends ReconfigurableAppClientAsync<Request> {
+public class Simulator extends ReconfigurableAppClientAsync<Request> {
 
-    private int numResponses = 0;
+    static int noBursts = 100;
 
     static TxnClient client;
 
@@ -50,7 +53,56 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
         created = true;
     }
 
-    void testGetRequest(int finalValue) throws IOException{
+    int failure =0;
+
+    TxClientRequest getRandomlyCreatedTxRequest(){
+        return null;
+    }
+
+    void checkQuorumStatus(Set<String> actives){
+        synchronized (isAlive){
+            int i=0;
+            for(String active:actives){
+                if(isAlive.get(active).booleanValue())i++;
+            }
+            if(i>isAlive.size()/2)failure++;
+        }
+    }
+
+    public void startload(int load){
+        RateLimiter rateLimiter = new RateLimiter(load);
+        for(int i=0;i<=load*noBursts;i++){
+            rateLimiter.record();
+            TxClientRequest txClientRequest = getRandomlyCreatedTxRequest();
+            try {
+                sendRequestAnycast(txClientRequest, new RequestCallback() {
+
+                    @Override
+                    public void handleResponse(Request response) {
+                        if (response instanceof TxClientResult) {
+                            try {
+
+                                TxClientResult t = (TxClientResult) response;
+                                System.out.println(t.getActivesPrevious().toString());
+                                System.out.println("Transaction status " + ((TxClientResult) response).success);
+//                        testGetRequest(10);
+                                System.out.println("Transaction test complete");
+                            } catch (Exception e) {
+                                throw new RuntimeException("Transaction failed");
+                            }
+                        }
+                    }
+                });
+            }catch (Exception ex){
+                System.out.println("Recieved an exception");
+            }
+
+        }
+
+
+    }
+
+    void testGetRequest(int finalValue) throws IOException {
         sendRequest(new GetRequest("name0"), new InetSocketAddress("127.0.0.1", 2100), new RequestCallback() {
             @Override
             public void handleResponse(Request response) {
@@ -62,7 +114,6 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
             }
         });
     }
-
 
     void testMultiLineTxn(){
         createSomething();
@@ -142,8 +193,6 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
         });
     }
 
-
-
     void testBasicCommit() throws IOException{
         createSomething();
 
@@ -170,19 +219,19 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
                     }
                 }
             }
-         });
+        });
     }
 
     /**
      * @throws IOException
      */
-    public TxnClient() throws IOException {
+    public Simulator() throws IOException {
         super();
     }
 
-
     @Override
     public Request getRequest(String stringified) {
+
         try {
 /*      DEBUG tip: If requests are not being recieved debug here */
             JSONObject jsonObject=new JSONObject(stringified);
@@ -201,9 +250,6 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
         return null;
     }
-
-
-
 
     @Override
     public Set<IntegerPacketType> getRequestTypes() {
@@ -225,19 +271,80 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
      * @param args
      * @throws IOException
      */
+    static Random rand = new Random();
+
+    static long getRandom(int exp){
+        return Math.round(Math.log(1- rand.nextDouble())*(exp)*-1);
+    }
+
+
+    static class SimulateFailure extends Thread{
+
+        final String activeID;
+
+        final int ettf;
+
+        void runCommand(String cmd){
+        try {
+            Process p = Runtime.getRuntime().exec(new String[]{cmd});
+            BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            String line;
+            while ((line = input.readLine()) != null) {
+                System.out.println(line);
+            }
+            input.close();
+        } catch(IOException ex){
+            System.out.println(activeID + "Could not execute");
+        }
+        }
+
+        SimulateFailure(String activeID,int ettf ){
+         this.activeID = activeID;
+         this.ettf = ettf;
+        }
+
+        public void run() {
+            try {
+                while(true) {
+                    long fail = getRandom(ettf);
+                    System.out.println("System" + activeID + " started with ettf=" + fail);
+                    Thread.sleep(fail);
+                    System.out.println("System " + activeID + " Killed");
+                    Thread.sleep(10000);
+                }
+            }catch(InterruptedException ex){
+                System.out.println("Interrupted");
+            }
+        }
+    }
+
+    protected static String DEFAULT_RECONFIGURATOR_PREFIX = "active.";
+
+    static Map<String, InetSocketAddress> actives = new HashMap<String, InetSocketAddress>();
+
+    static Map<String,Boolean> isAlive = new HashMap<>();
+
+    static{
+        Properties config = PaxosConfig.getAsProperties();
+
+        Set<String> keys = config.stringPropertyNames();
+        for (String key : keys) {
+            if (key.trim().startsWith(DEFAULT_RECONFIGURATOR_PREFIX)) {
+                actives .put(key.replaceFirst(DEFAULT_RECONFIGURATOR_PREFIX, ""),
+                        Util.getInetSocketAddressFromString(config
+                                .getProperty(key)));
+            }
+        }
+
+    }
 
     public static void main(String args[]) throws  IOException{
-//        for(InetSocketAddress socketAddress:PaxosConfig.getActives().values()){
-//            System.out.println(socketAddress);
-//        }
-//        Process p = Runtime.getRuntime().exec(new String[]{"ls"});
-//        BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
-//        String line;
-//        while ((line = input.readLine()) != null) {
-//            System.out.println(line);
-//        }
-//        input.close();
         createSomething();
+        int ettf = 40000;
+        for(String key:actives.keySet()){
+            new SimulateFailure(key,ettf).start();
+        }
+
 //        client.testGetRequest(10);
 //        client = new TxnClient();
         client.testBasicCommit();

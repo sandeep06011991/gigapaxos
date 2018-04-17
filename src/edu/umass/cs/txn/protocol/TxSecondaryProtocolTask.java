@@ -24,11 +24,9 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
     TXTakeover request;
 
     public TxSecondaryProtocolTask(Transaction transaction, TxState state
-            , ProtocolExecutor protocolExecutor){
-
-        super(transaction,protocolExecutor);
+            , ProtocolExecutor protocolExecutor,Set<String> leaderActives ,Set<String> prevLeaderQuorum){
+        super(transaction,protocolExecutor,leaderActives,prevLeaderQuorum);
         this.state=state;
-
         this.period =  (120+new Random().nextInt(120))*1000;
         //Secondaries timeout after 2 min
         request=new TXTakeover(TXPacket.PacketType.TX_TAKEOVER,transaction.getTXID(),transaction.getLeader());
@@ -54,15 +52,16 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
            System.out.println("Changing state to"+newState );
         }
         System.out.println("New Secondary with task " + newState);
-        return new TxSecondaryProtocolTask(transaction,newState,getProtocolExecutor());
+        if(request.getQuorum().size()!=0 && previousLeaderActives==null) previousLeaderActives = request.getQuorum();
+        return new TxSecondaryProtocolTask(transaction,newState,getProtocolExecutor(),leaderActives, previousLeaderActives);
     }
 
     @Override
     public TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary) {
         if(isPrimary){
-            return new TxLockProtocolTask<>(transaction,getProtocolExecutor());
+            return new TxLockProtocolTask<>(transaction,getProtocolExecutor(),leaderActives);
         }else{
-            return new TxSecondaryProtocolTask(transaction,state,getProtocolExecutor());
+            return new TxSecondaryProtocolTask(transaction,state,getProtocolExecutor(),leaderActives,previousLeaderActives);
         }
     }
 

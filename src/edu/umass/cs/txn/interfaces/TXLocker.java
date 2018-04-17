@@ -5,6 +5,8 @@ import edu.umass.cs.txn.exceptions.TXException;
 import edu.umass.cs.txn.exceptions.TxnState;
 import edu.umass.cs.txn.txpackets.TxState;
 
+import java.util.Set;
+
 /**
  * @author arun
  *
@@ -23,7 +25,7 @@ public interface TXLocker {
 
 	public boolean isAllowedRequest(ClientRequest clientRequest);
 
-	public boolean lock(String serviceName,String lockID) ;
+	public boolean lock(String serviceName,String lockID,Set<String> leaderQuorum) ;
 
 	public boolean	isLocked(String lockID);
 

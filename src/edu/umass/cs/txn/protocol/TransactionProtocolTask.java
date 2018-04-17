@@ -12,6 +12,7 @@ import edu.umass.cs.txn.txpackets.TxState;
 import edu.umass.cs.txn.txpackets.TxStateRequest;
 
 import java.util.ArrayList;
+import java.util.Set;
 
 abstract public class TransactionProtocolTask<NodeIDType> implements
         SchedulableProtocolTask<NodeIDType, TXPacket.PacketType, String> {
@@ -24,9 +25,14 @@ abstract public class TransactionProtocolTask<NodeIDType> implements
 
     final int MAX_RETRY=3;
 
-    TransactionProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor){
+    Set<String> leaderActives;
+
+    Set<String> previousLeaderActives;
+    TransactionProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor,Set<String> leaderActives,Set<String> previousLeaderActives){
         this.transaction=transaction;
         this.protocolExecutor=protocolExecutor;
+        this.leaderActives = leaderActives;
+        this.previousLeaderActives = previousLeaderActives;
     }
 
     public Transaction getTransaction() {
@@ -89,8 +95,17 @@ abstract public class TransactionProtocolTask<NodeIDType> implements
     public long getPeriod() {
 //        FIXME: Write a test that Test this getPeriod
 //        FIXME: Write a random wait Period generator
-        return  10000;
+        return  20000;
     }
+
+    public Set<String> getLeaderActives(){
+        return leaderActives;
+    }
+
+    public Set<String> getPreviousParticipantQuorum(){
+        return previousLeaderActives;
+    }
+
 
 }
 

@@ -17,9 +17,9 @@ public  class TxCommitProtocolTask<NodeIDType> extends
 
     TreeSet<String> awaitingUnLock;
 
-    public TxCommitProtocolTask(Transaction t, ProtocolExecutor protocolExecutor)
+    public TxCommitProtocolTask(Transaction t, ProtocolExecutor protocolExecutor,Set<String> leaderActives, Set<String> previousLeaderActives)
     {
-        super(t,protocolExecutor);
+        super(t,protocolExecutor,leaderActives,previousLeaderActives);
     }
 
 
@@ -30,11 +30,12 @@ public  class TxCommitProtocolTask<NodeIDType> extends
             System.out.println("Commit Sequence complete!!!!!!!!!!!!!!!!");
             return null;
         }
+        if((request.getQuorum().size()!=0) && (previousLeaderActives==null))previousLeaderActives = request.getQuorum();
         if(request.getState() == TxState.COMMITTED){
-            return new TxCommitProtocolTask(transaction,protocolExecutor);
+            return new TxCommitProtocolTask(transaction,protocolExecutor,leaderActives,previousLeaderActives);
         }
         System.out.println("As already decision is made to Commit,cannot "+request.getState());
-        return new TxCommitProtocolTask(transaction,protocolExecutor);
+        return new TxCommitProtocolTask(transaction,protocolExecutor,leaderActives,previousLeaderActives);
 
 
 //      throw new RuntimeException("To change state from Commit to"+ request.getState()+"is a safety violation");
@@ -46,7 +47,7 @@ public  class TxCommitProtocolTask<NodeIDType> extends
 //            FIXME: study request retry of gigapaxos to fix this
             return null;
         }
-        return new TxSecondaryProtocolTask(transaction,TxState.COMMITTED,getProtocolExecutor());
+        return new TxSecondaryProtocolTask(transaction,TxState.COMMITTED,getProtocolExecutor(),leaderActives,previousLeaderActives);
     }
 
     @Override

@@ -334,11 +334,13 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			TXInitRequest trx=(TXInitRequest)request;
 				if(trx.transaction.nodeId.equals(this.getMyID())){
 					System.out.println("Initiating Primary Transaction,leader:"+getMyID());
-					this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(trx.transaction,protocolExecutor));
+					this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(trx.transaction,protocolExecutor,
+							(Set<String>) this.getCoordinator().getReplicaGroup(trx.transaction.getLeader())));
 				}else{
 					this.protocolExecutor.spawnIfNotRunning(
 							new TxSecondaryProtocolTask<>
-									(trx.transaction,TxState.INIT,protocolExecutor));
+									(trx.transaction,TxState.INIT,protocolExecutor,
+											(Set<String>) this.getCoordinator().getReplicaGroup(trx.transaction.getLeader()),null));
 				}
 			String leader_name="Service_name_txn";
 			LeaderState leaderState;
@@ -351,12 +353,15 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		}
 		if(request instanceof LockRequest){
 			LockRequest lockRequest=(LockRequest)request;
-			boolean success=txLocker.lock(lockRequest.getServiceName(),lockRequest.txid);
+			boolean success=txLocker.lock(lockRequest.getServiceName(),lockRequest.txid,lockRequest.getLeaderActives());
 			TXResult result=
 					new TXResult(lockRequest.txid,lockRequest.getTXPacketType(),
 							success,(String) lockRequest.getKey(),lockRequest.getServiceName(),lockRequest.getLeader());
 			result.setRequestId(lockRequest.getRequestID());
 			lockRequest.response=result;
+			if(!success && txLocker.isLocked(lockRequest.getServiceName())){
+				result.setActivesOfPreviousLeader(txLocker.getStateMap(lockRequest.getServiceName()).leaderQuorum);
+			}
 			return true;
 		}
 
@@ -480,21 +485,24 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 //				FixMe: Repeat some code for a quick fix
 				LeaderState leaderState = new LeaderState(jsonObject.getJSONObject("leader"),this.getCoordinator());
 				for(OngoingTxn ongoingTxn:leaderState.ongoingTxnHashMap.values()){
+					Transaction transaction = ongoingTxn.transaction;
+					Set<String > leaderActives = (Set<String>) this.getCoordinator().getReplicaGroup(transaction.getLeader());
 					switch(ongoingTxn.txState){
-						case INIT:	Transaction transaction = ongoingTxn.transaction;
-									if(transaction.nodeId.equals(getMyID())){
+						case INIT:	if(transaction.nodeId.equals(getMyID())){
 									System.out.println("Initiating Primary Transaction	"+getMyID());
-										this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(transaction,protocolExecutor));
+										this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(transaction,protocolExecutor,
+												leaderActives));
 									}else{
 										System.out.println("Initiating Secondary Transaction");
 										this.protocolExecutor.spawnIfNotRunning(
 												new TxSecondaryProtocolTask<>
-														(transaction,TxState.INIT,protocolExecutor));
+														(transaction,TxState.INIT,protocolExecutor,leaderActives,null));
 									}
 									break;
-						case COMMITTED:	protocolExecutor.spawn(new TxCommitProtocolTask<>(ongoingTxn.transaction,protocolExecutor));
+						case COMMITTED:	protocolExecutor.spawn(new TxCommitProtocolTask<>(ongoingTxn.transaction,protocolExecutor,leaderActives,null));
 										break;
-						case ABORTED:	protocolExecutor.spawn(new TxAbortProtocolTask<>(ongoingTxn.transaction,protocolExecutor));
+						case ABORTED:	// FixME: Major approximation that we are not counting transactions where machines have woken up.
+										protocolExecutor.spawn(new TxAbortProtocolTask<>(ongoingTxn.transaction,protocolExecutor,leaderActives,null));
 										break;
 						case COMPLETE: throw new RuntimeException("If it was complete why would it be recorded");
 					}

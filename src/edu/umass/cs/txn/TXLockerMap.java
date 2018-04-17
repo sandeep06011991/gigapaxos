@@ -8,6 +8,7 @@ import edu.umass.cs.txn.interfaces.TXLocker;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
 
 /**
  * @author arun
@@ -44,7 +45,7 @@ public class TXLockerMap implements TXLocker {
 	private HashMap<String,TxnState> txnStateHashMap = new HashMap<>();
 
 	@Override
-	public boolean lock(String serviceName,String lockID){
+	public boolean lock(String serviceName,String lockID,Set<String> leaderQuorum){
 		if(txMap.containsKey(serviceName)){
 			String currlockId=txMap.get(serviceName);
 //			Lock requests are idempotent
@@ -54,7 +55,7 @@ public class TXLockerMap implements TXLocker {
 			String state=app.checkpoint(serviceName);
 			txMap.put(serviceName,lockID);
 			stateMap.put(serviceName,state);
-			txnStateHashMap.put(serviceName,new TxnState(lockID,state));
+			txnStateHashMap.put(serviceName,new TxnState(lockID,state,leaderQuorum));
 			return true;
 		}
 		return false;

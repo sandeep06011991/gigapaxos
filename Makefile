@@ -22,6 +22,11 @@ serverd:
 client:
 	./bin/gpClient.sh -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties edu.umass.cs.txn.testing.TxnClient
 
+sim:
+	./bin/gpClient.sh -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties edu.umass.cs.txn.testing.Simulator
+
+
+
 kill:
 	ps -e| grep java | awk 'BEGIN {}{print $$1}' | xargs  kill -9
 

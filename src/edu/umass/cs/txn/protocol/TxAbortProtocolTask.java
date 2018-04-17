@@ -18,8 +18,9 @@ public class TxAbortProtocolTask<NodeIDType>
 //    FIXME: There should be a retry mechanism
     TreeSet<String> unlockList;
 
-    public TxAbortProtocolTask(Transaction transaction, ProtocolExecutor protocolExecutor) {
-        super(transaction, protocolExecutor);
+
+    public TxAbortProtocolTask(Transaction transaction, ProtocolExecutor protocolExecutor,Set<String> leaderActives,Set<String> previousQuorum) {
+        super(transaction, protocolExecutor, leaderActives, previousQuorum);
         unlockList = transaction.getLockList();
     }
 
@@ -29,12 +30,13 @@ public class TxAbortProtocolTask<NodeIDType>
             System.out.println("Abort sequence completed!!!!!!!!!!!!!!!!!!");
             return null;
         }
+        if(request.getQuorum().size()!=0 && previousLeaderActives ==null)previousLeaderActives = request.getQuorum();
         if(request.getState() == TxState.ABORTED){
-            return new TxAbortProtocolTask(transaction,protocolExecutor);
+            return new TxAbortProtocolTask(transaction,protocolExecutor,leaderActives,previousLeaderActives);
         }
 
         System.out.println("Ignoring this state:" + request.getState() + " change as decision is already made");
-        return new TxAbortProtocolTask(transaction,protocolExecutor);
+        return new TxAbortProtocolTask(transaction,protocolExecutor,leaderActives,previousLeaderActives);
 //        throw new RuntimeException("To change state from Abort to"+ request.getState()+"is a safety violation");
         /*  Only a primary can initite state change and if if there is a another primary, a state change request
              * would be processed before this is handled */
@@ -46,7 +48,7 @@ public class TxAbortProtocolTask<NodeIDType>
             return null;
         }
         /*A primary would not issue a take over */
-        return new TxSecondaryProtocolTask(transaction, TxState.ABORTED,protocolExecutor);
+        return new TxSecondaryProtocolTask(transaction, TxState.ABORTED,protocolExecutor,leaderActives,previousLeaderActives);
     }
 
     @Override
@@ -59,7 +61,8 @@ public class TxAbortProtocolTask<NodeIDType>
             }
         }
         if(unlockList.isEmpty()){
-            TxClientResult result=new TxClientResult(transaction.requestId,false,transaction.entryServer,transaction.clientAddr);
+            TxClientResult result=new TxClientResult(transaction,false);
+            result.setActivesPrevious(previousLeaderActives);
             System.out.println("Complete and Cancelled");
             ArrayList<Request> re= new ArrayList<>();
             TxStateRequest request=new TxStateRequest(transaction.getTXID(),TxState.COMPLETE,transaction.getLeader());
@@ -77,7 +80,7 @@ public class TxAbortProtocolTask<NodeIDType>
             UnlockRequest unlockRequest = new UnlockRequest(t,transaction.getTXID(),false,transaction.getLeader());
             requests.add(unlockRequest);
         }
-        System.out.println("Abort Sequence initiated");
+        System.out.println("Abort Sequence initiated" + retry);
 
         return getMessageTask(requests);
     }

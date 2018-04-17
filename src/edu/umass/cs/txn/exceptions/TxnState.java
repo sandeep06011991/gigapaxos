@@ -7,6 +7,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Set;
 
 public class TxnState {
 
@@ -18,10 +19,12 @@ public class TxnState {
 
     public ArrayList<String> requests = new ArrayList<>();
     public HashSet<Long> requestId = new HashSet<>();
+    public Set<String> leaderQuorum = new HashSet<>();
 
-    public  TxnState(String txId,String state){
+    public  TxnState(String txId,String state,Set<String> leaderQuorum){
         this.txId = txId    ;
         this.state = state;
+        this.leaderQuorum = leaderQuorum;
     }
 
     public  void add_request(ClientRequest request){
@@ -42,6 +45,11 @@ public class TxnState {
             }
         }
 
+        JSONArray tt = jsonObject.getJSONArray("leaderQuorum");
+        for(int t=0;t<tt.length();t++){
+            leaderQuorum.add(tt.getString(t));
+        }
+
     }
 
 
@@ -54,6 +62,8 @@ public class TxnState {
                 jsonObject.put("requests", requests);
                 jsonObject.put("requestId",requestId);
             }
+            jsonObject.put("leaderQuorum",leaderQuorum);
+
             return jsonObject;
         }catch(Exception e){
             throw new RuntimeException("Unsuccessfull in creating json object");

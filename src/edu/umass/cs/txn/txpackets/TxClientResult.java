@@ -6,10 +6,13 @@ import edu.umass.cs.gigapaxos.interfaces.RequestIdentifier;
 import edu.umass.cs.nio.JSONPacket;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
 import edu.umass.cs.txn.Transaction;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.InetSocketAddress;
+import java.util.HashSet;
+import java.util.Set;
 
 public class TxClientResult extends JSONPacket implements Request,RequestIdentifier,ClientRequest {
 
@@ -20,6 +23,8 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
     InetSocketAddress serverAddr;
     InetSocketAddress clientAddr;
 
+    Set<String> activesPrevious;
+
     public TxClientResult(Transaction transaction,boolean success){
         super(TXPacket.PacketType.TX_CLIENT_RESPONSE);
         this.requestId = transaction.requestId;
@@ -28,13 +33,7 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
         this.clientAddr = transaction.clientAddr;
     }
 
-    public TxClientResult(long requestId,boolean success,InetSocketAddress serverAddr,InetSocketAddress clientAddr){
-        super(TXPacket.PacketType.TX_CLIENT_RESPONSE);
-        this.requestId = requestId;
-        this.success = success;
-        this.serverAddr = serverAddr;
-        this.clientAddr = clientAddr;
-    }
+
 
 
 
@@ -44,7 +43,14 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
         requestId = json.getLong("reqID");
         clientAddr = getSocketAddrFromString(json.getString("clientAddr"));
         serverAddr = getSocketAddrFromString(json.getString("serverAddr"));
-
+        if(json.has("Actives")){
+            activesPrevious = new HashSet<>();
+            JSONArray tt = json.getJSONArray("Actives");
+            for(int t=0;t<tt.length();t++){
+                activesPrevious.add(tt.getString(t));
+            }
+        }
+//        assert !success && activesPrevious.size()>0;
     }
 
     @Override
@@ -54,6 +60,9 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
         jsonObject.put("success",success);
         jsonObject.put("clientAddr",clientAddr.toString());
         jsonObject.put("serverAddr",serverAddr.toString());
+        jsonObject.put("Actives",activesPrevious);
+
+//        assert !success && activesPrevious.size()>0;
         return jsonObject;
     }
 
@@ -96,4 +105,10 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
     public InetSocketAddress getServerAddr() {
         return serverAddr;
     }
+
+    public void setActivesPrevious(Set<String> activesPrevious){
+        this.activesPrevious = activesPrevious;
+    }
+
+    public Set<String> getActivesPrevious(){return  activesPrevious;}
 }

@@ -25,9 +25,9 @@ public class TxExecuteProtocolTask<NodeIDType>
     ArrayList<Long> toExecuteRequests = new ArrayList<>();
     HashMap<Long,ClientRequest> map = new HashMap<>();
 
-    public TxExecuteProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor)
+    public TxExecuteProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor,Set<String> leaderActives,Set<String> previousLeaderActives)
     {
-        super(transaction,protocolExecutor);
+        super(transaction,protocolExecutor,leaderActives,previousLeaderActives);
         for(Request r: transaction.getRequests()){
 //            FixME: This casting should not be required, change definition in transaction
             toExecuteRequests.add(((ClientRequest)r).getRequestID());
@@ -38,17 +38,18 @@ public class TxExecuteProtocolTask<NodeIDType>
     @Override
     public TransactionProtocolTask onStateChange(TxStateRequest request) {
         if(request.getState()== TxState.COMMITTED){
-            return new TxCommitProtocolTask(transaction,protocolExecutor);
+            return new TxCommitProtocolTask(transaction,protocolExecutor,leaderActives,previousLeaderActives);
         }else{
             assert request.getState() == TxState.ABORTED;
-            return new TxAbortProtocolTask(transaction,protocolExecutor);
+//            We are not concerned with this failure
+            return new TxAbortProtocolTask(transaction,protocolExecutor,leaderActives,previousLeaderActives);
         }
     }
 
     @Override
     public TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary) {
         if(isPrimary){return null;}
-        return new TxSecondaryProtocolTask(transaction,TxState.INIT,getProtocolExecutor());
+        return new TxSecondaryProtocolTask(transaction,TxState.INIT,getProtocolExecutor(),leaderActives,leaderActives);
     }
 
 

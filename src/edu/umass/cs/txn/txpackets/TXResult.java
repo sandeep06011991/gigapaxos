@@ -1,11 +1,14 @@
 package edu.umass.cs.txn.txpackets;
 
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.security.Key;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
 public class TXResult extends TXPacket{
 //  opId is used to match packets after they have been recieved in the ProtocolTask
@@ -24,6 +27,8 @@ public class TXResult extends TXPacket{
 
     public IntegerPacketType opPacketType;
 
+    Set<String> activesOfPreviousLeader = new HashSet<>();
+
     public TXResult(String txid,TXPacket.PacketType packetType,boolean success,String key,String opId,String leader) {
         super(PacketType.RESULT, txid,leader);
         opPacketType=packetType;
@@ -39,6 +44,9 @@ public class TXResult extends TXPacket{
         jsonObject.put("success",success);
         jsonObject.put("key",key);
         jsonObject.put("opId",opId);
+        if(activesOfPreviousLeader!=null){
+            jsonObject.put("PreviousActives",activesOfPreviousLeader);
+        }
         return jsonObject;
     }
 
@@ -49,6 +57,13 @@ public class TXResult extends TXPacket{
         success=jsonObject.getBoolean("success");
         key=jsonObject.getString("key");
         opId=jsonObject.getString("opId");
+        if(jsonObject.has("PreviousActives")){
+            JSONArray j = jsonObject.getJSONArray("PreviousActives");
+            for(int i=0;i<j.length();i++){
+                activesOfPreviousLeader.add(j.getString(i));
+            }
+
+        }
     }
 
 
@@ -65,4 +80,9 @@ public class TXResult extends TXPacket{
 
     public void setRequestId(long requestId){this.requestId=requestId;}
 
+    public void setActivesOfPreviousLeader(Set<String> actives ){
+        this.activesOfPreviousLeader = actives;
+    }
+
+    public Set<String> getPrevLeaderQuorumIfFailed(){return this.activesOfPreviousLeader;}
 }
