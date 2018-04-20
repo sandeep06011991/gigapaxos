@@ -36,4 +36,6 @@ public interface TXLocker {
 	public void updateStateMap(String serviceName,TxnState state );
 
 	public TxnState getStateMap(String serviceName);
+
+	public void	printStats();
 }

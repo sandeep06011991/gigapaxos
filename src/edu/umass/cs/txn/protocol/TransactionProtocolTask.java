@@ -3,11 +3,10 @@ package edu.umass.cs.txn.protocol;
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.nio.GenericMessagingTask;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
-import edu.umass.cs.protocoltask.ProtocolTask;
 import edu.umass.cs.protocoltask.SchedulableProtocolTask;
 import edu.umass.cs.txn.Transaction;
+import edu.umass.cs.txn.exceptions.ResponseCode;
 import edu.umass.cs.txn.txpackets.TXPacket;
-import edu.umass.cs.txn.txpackets.TXTakeover;
 import edu.umass.cs.txn.txpackets.TxState;
 import edu.umass.cs.txn.txpackets.TxStateRequest;
 
@@ -25,14 +24,9 @@ abstract public class TransactionProtocolTask<NodeIDType> implements
 
     final int MAX_RETRY=3;
 
-    Set<String> leaderActives;
-
-    Set<String> previousLeaderActives;
-    TransactionProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor,Set<String> leaderActives,Set<String> previousLeaderActives){
+    TransactionProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor){
         this.transaction=transaction;
         this.protocolExecutor=protocolExecutor;
-        this.leaderActives = leaderActives;
-        this.previousLeaderActives = previousLeaderActives;
     }
 
     public Transaction getTransaction() {
@@ -71,23 +65,24 @@ abstract public class TransactionProtocolTask<NodeIDType> implements
 
     // Returns the protocol task that must be spawned in place of the current protocol task
 //    when state change request is recieved
-    public abstract TransactionProtocolTask onStateChange(TxStateRequest request);
-
-    public abstract TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary);
+    public abstract void onStateChange(TxStateRequest request);
 
     public void cancel(){
-//        FIXME: Is there a better way to cancel a task
+/**
+ *         FIXME: Is there a better way to cancel a task
+ *         Defend this design idea. Seems like an extremely over kill idea
+ */
         protocolExecutor.remove(this.getKey());
     }
 
     @Override
-    public GenericMessagingTask<NodeIDType, ?>[] restart() {
+    public GenericMessagingTask<NodeIDType, ?>[] restart(){
         retry++;
         if(retry <=MAX_RETRY){
             return start();
         }
-        TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(), TxState.ABORTED,transaction.getLeader());
-        System.out.println("Protocol task has timed out");
+        TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(), TxState.ABORTED,transaction.getLeader(), ResponseCode.TIMEOUT,null);
+//        System.out.println("Protocol task has timed out");
         return getMessageTask(stateRequest);
     }
 
@@ -95,17 +90,8 @@ abstract public class TransactionProtocolTask<NodeIDType> implements
     public long getPeriod() {
 //        FIXME: Write a test that Test this getPeriod
 //        FIXME: Write a random wait Period generator
-        return  20000;
+        return  1000;
     }
-
-    public Set<String> getLeaderActives(){
-        return leaderActives;
-    }
-
-    public Set<String> getPreviousParticipantQuorum(){
-        return previousLeaderActives;
-    }
-
 
 }
 

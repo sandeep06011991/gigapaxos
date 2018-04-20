@@ -8,6 +8,7 @@ import edu.umass.cs.protocoltask.ProtocolEvent;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
 import edu.umass.cs.txn.Transaction;
+import edu.umass.cs.txn.exceptions.ResponseCode;
 import edu.umass.cs.txn.txpackets.*;
 
 import java.util.*;
@@ -17,38 +18,24 @@ public  class TxCommitProtocolTask<NodeIDType> extends
 
     TreeSet<String> awaitingUnLock;
 
-    public TxCommitProtocolTask(Transaction t, ProtocolExecutor protocolExecutor,Set<String> leaderActives, Set<String> previousLeaderActives)
+    boolean respondToClient = true;
+
+    public TxCommitProtocolTask(Transaction t, ProtocolExecutor protocolExecutor)
     {
-        super(t,protocolExecutor,leaderActives,previousLeaderActives);
+        super(t,protocolExecutor);
     }
 
 
 
     @Override
-    public TransactionProtocolTask onStateChange(TxStateRequest request) {
+    public void onStateChange(TxStateRequest request) {
         if(request.getState() == TxState.COMPLETE){
-            System.out.println("Commit Sequence complete!!!!!!!!!!!!!!!!");
-            return null;
+//            System.out.println("Commit Sequence complete!!!!!!!!!!!!!!!!"+transaction.getTXID());
+            this.cancel();
         }
-        if((request.getQuorum().size()!=0) && (previousLeaderActives==null))previousLeaderActives = request.getQuorum();
-        if(request.getState() == TxState.COMMITTED){
-            return new TxCommitProtocolTask(transaction,protocolExecutor,leaderActives,previousLeaderActives);
-        }
-        System.out.println("As already decision is made to Commit,cannot "+request.getState());
-        return new TxCommitProtocolTask(transaction,protocolExecutor,leaderActives,previousLeaderActives);
 
-
-//      throw new RuntimeException("To change state from Commit to"+ request.getState()+"is a safety violation");
     }
 
-    @Override
-    public TransactionProtocolTask onTakeOver(TXTakeover request, boolean isPrimary) {
-        if(isPrimary){
-//            FIXME: study request retry of gigapaxos to fix this
-            return null;
-        }
-        return new TxSecondaryProtocolTask(transaction,TxState.COMMITTED,getProtocolExecutor(),leaderActives,previousLeaderActives);
-    }
 
     @Override
     public GenericMessagingTask<NodeIDType, ?>[]
@@ -57,16 +44,13 @@ public  class TxCommitProtocolTask<NodeIDType> extends
             TXResult txResult = (TXResult)event;
 
             if(awaitingUnLock.contains(txResult.getOpId()) && !txResult.isFailed()){
-                System.out.println("Unlocks recieved");
                 awaitingUnLock.remove(txResult.getOpId());
             }
             if(awaitingUnLock.isEmpty()){
-                System.out.println("All unlocks recieved");
+//                System.out.println("All locks recieved");
                 ArrayList<Request> re= new ArrayList<>();
-                TxStateRequest request=new TxStateRequest(transaction.getTXID(),TxState.COMPLETE,transaction.getLeader());
-                TxClientResult response = new TxClientResult(transaction,true);
+                TxStateRequest request=new TxStateRequest(transaction.getTXID(),TxState.COMPLETE,transaction.getLeader(),ResponseCode.COMPLETE,null);
                 re.add(request);
-                re.add(response);
                 return getMessageTask(re);
             }
 
@@ -78,7 +62,10 @@ public  class TxCommitProtocolTask<NodeIDType> extends
     public GenericMessagingTask<NodeIDType, ?>[] start() {
 //        FIXME: Forgot to clean this code
         awaitingUnLock = transaction.getLockList();
-        if(awaitingUnLock.isEmpty()){return  getMessageTask(new TxStateRequest(transaction.getTXID(),TxState.COMPLETE,transaction.getLeader()));}
+        if(awaitingUnLock.isEmpty()){
+            return  getMessageTask(new TxStateRequest(transaction.getTXID(),TxState.COMPLETE,transaction.getLeader()
+                            ,ResponseCode.COMPLETE,null));
+        }
         ArrayList<Request> requests=new ArrayList<>();
         for (String t : awaitingUnLock) {
 //          Low Priority: cleaner method exists
@@ -86,7 +73,11 @@ public  class TxCommitProtocolTask<NodeIDType> extends
             requests.add(unlockRequest);
 
         }
-        System.out.println("Begin UnLocking");
+        if(respondToClient) {
+            TxClientResult response = new TxClientResult(transaction, ResponseCode.COMMITTED,null);
+            respondToClient = false;
+            requests.add(response);
+        }
 
         return getMessageTask(requests);
     }

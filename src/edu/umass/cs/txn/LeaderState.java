@@ -34,7 +34,10 @@ public class LeaderState {
                 return;
             }
         OngoingTxn ongoingTxn = ongoingTxnHashMap.get(txId);
-        ongoingTxn.txState = state;
+        if(ongoingTxn.txState == TxState.INIT){
+            ongoingTxn.txState = state;
+
+        }
     }
 
 //  inserted after the INIT transaction

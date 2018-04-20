@@ -5,6 +5,7 @@ import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.txn.exceptions.TXException;
 import edu.umass.cs.txn.exceptions.TxnState;
 import edu.umass.cs.txn.interfaces.TXLocker;
+import org.omg.SendingContext.RunTime;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -70,21 +71,24 @@ public class TXLockerMap implements TXLocker {
 	 * @throws TXException
 	 */
 	public boolean unlock(String serviceName,String lockID)  {
+
 		if((txMap.containsKey(serviceName))){
 			String lckID=txMap.get(serviceName);
 			if(lckID.equals(lockID)){
 				stateMap.remove(serviceName);
 				txMap.remove(serviceName);
-				if(allowedRequests.containsKey(serviceName)){
+					if(allowedRequests.containsKey(serviceName)){
 					allowedRequests.remove(serviceName);
 				}
 				txnStateHashMap.remove(serviceName);
 				return true;
+			}else{
+				throw new RuntimeException("Attempting to unlock lock not held by you");
+
 			}
-//			When tx1 tries to unlock locks held by tx2
-			return false;
 		}
 //		unlock requests are idempotent
+		System.out.println("Couldnt find my lock");
 		return true;
 	}
 /* Returns
@@ -115,7 +119,6 @@ public class TXLockerMap implements TXLocker {
 		String serviceName=clientRequest.getServiceName();
 		if(!isLocked(serviceName)){return true;}
 		if(allowedRequests.containsKey(serviceName)&& allowedRequests.get(serviceName).contains(clientRequest.getRequestID())){
-			System.out.println("Request Is allowed");
 			TxnState state = txnStateHashMap.get(serviceName);
 			state.add_request(clientRequest);
 			return true;
@@ -154,5 +157,11 @@ public class TXLockerMap implements TXLocker {
 
 	public TxnState getStateMap(String serviceName){
 		return txnStateHashMap.get(serviceName);
+	}
+
+
+	public void printStats(){
+		System.out.println("Tx Map "+txMap.size());
+		System.out.println("Tx Map "+txnStateHashMap.size());
 	}
 }

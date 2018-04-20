@@ -9,6 +9,13 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
+
+/*
+Class used to store the state of the participant at the time of locking
+state: which is used to rollback
+leaderQuorum : which is used when a contending transaction is issued
+* */
+//FIXME: This file is in a wrong location, move it
 public class TxnState {
 
 //  Transaction ID also used as lockID

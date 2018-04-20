@@ -14,14 +14,12 @@ import edu.umass.cs.nio.nioutils.NIOHeader;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
-import edu.umass.cs.reconfiguration.PaxosReplicaCoordinator;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
-import edu.umass.cs.reconfiguration.examples.AppRequest;
-import edu.umass.cs.reconfiguration.reconfigurationpackets.ReplicableClientRequest;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.RequestActiveReplicas;
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
 
+import edu.umass.cs.txn.exceptions.ResponseCode;
 import edu.umass.cs.txn.exceptions.TXException;
 import edu.umass.cs.txn.exceptions.TxnState;
 import edu.umass.cs.txn.interfaces.TXLocker;
@@ -30,6 +28,7 @@ import edu.umass.cs.txn.txpackets.*;
 import edu.umass.cs.utils.Config;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.omg.SendingContext.RunTime;
 
 /**
  * @author arun
@@ -253,8 +252,6 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 					return new UnlockRequest(jsonObject);
 				case RESULT:
 					return new TXResult(jsonObject);
-				case TX_TAKEOVER:
-					return new TXTakeover(jsonObject);
 				case TX_STATE_REQUEST:
 					return new TxStateRequest(jsonObject);
 				case TX_CLIENT:
@@ -301,11 +298,9 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	@Override
 	public boolean preExecuted(Request request) {
 		if(request==null){return false;}
-
 		if(request instanceof TxClientResult) {
 			TxClientResult txClientResult = (TxClientResult) request;
 			try {
-				System.out.println("Sending to client from entry server"+txClientResult.toString());
 				((JSONMessenger)this.getMessenger()).sendClient(txClientResult.getClientAddr(),txClientResult,txClientResult.getServerAddr());
 			} catch (JSONException|IOException e) {
 				System.out.println("Unable to send to client");
@@ -316,11 +311,18 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		if(request instanceof TxClientRequest) {
 			String leader = "Service_name_txn";
 			TxClientRequest txClientRequest=(TxClientRequest)request;
+			leader = txClientRequest.getRequests().get(0).getServiceName();
 			Transaction transaction = new Transaction(txClientRequest.recvrAddr,
 					((TxClientRequest) request).getRequests(), (String) getMyID(),
 					txClientRequest.clientAddr,txClientRequest.getRequestID(),leader);
 			try {
-					this.gpClient.sendRequest(new TXInitRequest(transaction));
+
+				this.gpClient.sendRequest(new TXInitRequest(transaction), new RequestCallback() {
+					@Override
+					public void handleResponse(Request response) {
+						// do nothing
+					}
+				});
 
 			}catch (IOException ex){
 					throw new RuntimeException("Unable to send Transaction to Fixed Groups");
@@ -332,17 +334,17 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 //		FIXME: and inside the secondary transaction protocol
 		if(request instanceof TXInitRequest){
 			TXInitRequest trx=(TXInitRequest)request;
+			Set<String> leaderActives = (Set<String>)this.getCoordinator().getReplicaGroup(trx.transaction.getLeader());
 				if(trx.transaction.nodeId.equals(this.getMyID())){
-					System.out.println("Initiating Primary Transaction,leader:"+getMyID());
 					this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(trx.transaction,protocolExecutor,
-							(Set<String>) this.getCoordinator().getReplicaGroup(trx.transaction.getLeader())));
+							leaderActives));
 				}else{
 					this.protocolExecutor.spawnIfNotRunning(
 							new TxSecondaryProtocolTask<>
 									(trx.transaction,TxState.INIT,protocolExecutor,
-											(Set<String>) this.getCoordinator().getReplicaGroup(trx.transaction.getLeader()),null));
+											leaderActives));
 				}
-			String leader_name="Service_name_txn";
+			String leader_name=trx.transaction.getLeader();
 			LeaderState leaderState;
 			if((leaderState = leaderStateHashMap.get(leader_name))==null){
 				leaderState = new LeaderState(leader_name);
@@ -351,6 +353,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			leaderStateHashMap.put(leader_name,leaderState);
 			return true;
 		}
+
 		if(request instanceof LockRequest){
 			LockRequest lockRequest=(LockRequest)request;
 			boolean success=txLocker.lock(lockRequest.getServiceName(),lockRequest.txid,lockRequest.getLeaderActives());
@@ -367,15 +370,20 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 
 		if(request instanceof UnlockRequest){
 			UnlockRequest unlockRequest=(UnlockRequest)request ;
-			boolean success=false;
-			if(txLocker.isLockedByTxn(unlockRequest.getServiceName(),unlockRequest.getLockID())){
-				if(!unlockRequest.isCommited()){
-					restore(unlockRequest.getServiceName(),txLocker.getStateMap(unlockRequest.getServiceName()).state);
+			if(txLocker.isLocked(unlockRequest.getServiceName())) {
+				if (txLocker.isLockedByTxn(unlockRequest.getServiceName(), unlockRequest.getLockID())) {
+					if (!unlockRequest.isCommited()) {
+						restore(unlockRequest.getServiceName(), txLocker.getStateMap(unlockRequest.getServiceName()).state);
+					}
+					txLocker.unlock(unlockRequest.getServiceName(), unlockRequest.txid);
+				} else {
+					throw new RuntimeException("How can you attempt to unlock a lock not held by you");
+//				if group is not locked by txn
 				}
-				success=txLocker.unlock(unlockRequest.getServiceName(),unlockRequest.txid);
 			}
+//			This operation always succeeds
 			TXResult txResult= new TXResult(unlockRequest.txid,unlockRequest.getTXPacketType(),
-					success,(String) unlockRequest.getKey(),unlockRequest.getServiceName(),unlockRequest.getLeader());;
+					true,(String) unlockRequest.getKey(),unlockRequest.getServiceName(),unlockRequest.getLeader());;
 			txResult.setRequestId(unlockRequest.getRequestID());
 			unlockRequest.response=txResult;
 /*If 2 unlock requests where sent by the same co-ordinator and response is reordered
@@ -400,35 +408,20 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 
 		if(request instanceof TxStateRequest){
 			TransactionProtocolTask protocolTask=(TransactionProtocolTask) protocolExecutor.getTask(((TxStateRequest) request).getTXID());
+			protocolTask.onStateChange((TxStateRequest) request);
 			if(protocolTask==null){
 //				This transaction must have already been completed by a previous one
 				return true;
 			}
-			ProtocolTask newProtocolTask=protocolTask.onStateChange((TxStateRequest) request);
-			protocolExecutor.remove((String)protocolTask.getKey());
-			if(newProtocolTask!=null)protocolExecutor.spawn(newProtocolTask);
-			leaderStateHashMap.get("Service_name_txn").
+			leaderStateHashMap.get(request.getServiceName()).
 					updateTransaction(((TxStateRequest) request).getTXID(),((TxStateRequest) request).getState());
-			return true;
-		}
-
-		if(request instanceof TXTakeover){
-			TXTakeover txRequest=(TXTakeover)request;
-			TransactionProtocolTask protocolTask=(TransactionProtocolTask) protocolExecutor.getTask(txRequest.txid);
-			boolean isPrimary=txRequest.getNewLeader().equals((String)getMyID());
-			assert protocolTask != null;
-			ProtocolTask newProtocolTask = protocolTask.onTakeOver(txRequest,isPrimary);
-			if(isPrimary){System.out.println("My takeover successfull I,"+getMyID()+ " am leader ");}
-			if(newProtocolTask!=null){
-				protocolTask.cancel();
-				protocolExecutor.spawn(newProtocolTask);
-				}
 			return true;
 		}
 		if((request instanceof ClientRequest)){
 			if(txLocker.isAllowedRequest((ClientRequest) request)){
 				return false;
 				}
+
 //			FixMe: Can do some Exception handling here
 			System.out.println("DROPPING REQUEST. SYSTEM BUSY");
 			return true;
@@ -496,13 +489,13 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 										System.out.println("Initiating Secondary Transaction");
 										this.protocolExecutor.spawnIfNotRunning(
 												new TxSecondaryProtocolTask<>
-														(transaction,TxState.INIT,protocolExecutor,leaderActives,null));
+														(transaction,TxState.INIT,protocolExecutor,leaderActives));
 									}
 									break;
-						case COMMITTED:	protocolExecutor.spawn(new TxCommitProtocolTask<>(ongoingTxn.transaction,protocolExecutor,leaderActives,null));
+						case COMMITTED:	protocolExecutor.spawn(new TxCommitProtocolTask<>(ongoingTxn.transaction,protocolExecutor));
 										break;
 						case ABORTED:	// FixME: Major approximation that we are not counting transactions where machines have woken up.
-										protocolExecutor.spawn(new TxAbortProtocolTask<>(ongoingTxn.transaction,protocolExecutor,leaderActives,null));
+										protocolExecutor.spawn(new TxAbortProtocolTask<>(ongoingTxn.transaction,protocolExecutor,null, ResponseCode.TIMEOUT));
 										break;
 						case COMPLETE: throw new RuntimeException("If it was complete why would it be recorded");
 					}

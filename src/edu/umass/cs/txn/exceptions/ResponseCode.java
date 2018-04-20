@@ -1,17 +1,24 @@
 package edu.umass.cs.txn.exceptions;
 
+import java.util.HashMap;
+
 /**
  * @author arun
  * 
  *         Response codes for transaction operations.
+ *         Difference between TxState and ResponseCode
+ *         TxState is more internal
+ *         ResponseCode is used to infer response at the issueing client
  */
 public enum ResponseCode {
-
 	/**
 	 * Indicates that a lock acquisition attempt failed.
+	 * Lock is held by another transaction
 	 */
 	LOCK_FAILURE(11),
 
+	TIMEOUT(17),
+	/*Some operation timed out*/
 	/**
 	 * Indicates that a lock release attempt failed.
 	 * 
@@ -44,11 +51,29 @@ public enum ResponseCode {
 	 */
 	ABORT_FAILURE(16),
 
+	COMMITTED(18),
+
+	COMPLETE(19),
+
 	;
 
 	final int code;
 
 	ResponseCode(int code) {
 		this.code = code;
+	}
+
+	public int getInt(){return code;}
+
+	static HashMap<Integer,ResponseCode> map = new HashMap<>();
+
+	static{
+		for(ResponseCode rpe:ResponseCode.values()){
+			map.put(new Integer(rpe.getInt()),rpe);
+		}
+	}
+
+	public static ResponseCode getResponseCodeFromInt(int a){
+		return map.get(new Integer(a));
 	}
 }

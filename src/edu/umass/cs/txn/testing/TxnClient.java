@@ -17,7 +17,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.sql.Time;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -33,13 +35,15 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
     static boolean created = false;
 
+    long startTime;
+
     static void createSomething(){
         if(!created){
             try {
                 client = new TxnClient();
                 client.sendRequest(new CreateServiceName("Service_name_txn","0"));
-                client.sendRequest(new CreateServiceName("name0", "0"));
-                client.sendRequest(new CreateServiceName("name1","1"));
+                client.sendRequest(new CreateServiceName("name3", "0"));
+                client.sendRequest(new CreateServiceName("name4","1"));
 //                Fixme:Hack clean this up later
                 TimeUnit.SECONDS.sleep(5);
             }catch(Exception e){
@@ -80,7 +84,6 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
                 public void handleResponse(Request response) {
                     if(response instanceof TxClientResult){
                         try {
-                            System.out.println("Transaction status "+((TxClientResult) response).success);
                             testGetRequest(210);
                             System.out.println("Transaction test complete");
                         }catch(Exception e){
@@ -115,7 +118,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
             public void handleResponse(Request response) {
                 if(response instanceof TxClientResult){
                     try {
-                        System.out.println("Transaction status "+((TxClientResult) response).success);
+                        System.out.println("Transaction status "+((TxClientResult) response).getRpe());
                         testGetRequest(10);
                         System.out.println("Transaction test complete");
                     }catch(Exception e){
@@ -137,7 +140,6 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
             public void handleResponse(Request response) {
                 assert response instanceof TxClientResult;
                 TxClientResult txClientResult=(TxClientResult)response;
-                System.out.println("Transaction 2 status"+txClientResult.success);
             }
         });
     }
@@ -146,31 +148,34 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
     void testBasicCommit() throws IOException{
         createSomething();
+        for(int i=0;i<100;i++) {
+            try {
+                System.out.println("Attempt Request 1"+i);
+                ArrayList<ClientRequest> requests = new ArrayList<>();
+                requests.add(new OperateRequest("name3", 10, OperateRequest.Operation.add));
+                requests.add(new OperateRequest("name4", 20, OperateRequest.Operation.add));
+                TxClientRequest txClientRequest = new TxClientRequest(requests);
+                startTime = new Date().getTime();
+//                InetSocketAddress ient= PaxosConfig.getActives().get("arun_a0");
+                TxClientResult rd  =(TxClientResult) sendRequestAnycast(txClientRequest,1000);
+                long timeTaken = ((new Date()).getTime() - startTime);
+                System.out.println("Transaction time taken complete" + timeTaken);
 
-        InetSocketAddress entryServer=new InetSocketAddress("hp066.utah.cloudlab.us",2100);
-        ArrayList<ClientRequest> requests = new ArrayList<>();
-        requests.add(new OperateRequest("name0", 10, OperateRequest.Operation.add));
-        requests.add(new OperateRequest("name1", 20, OperateRequest.Operation.add));
-        TxClientRequest txClientRequest = new TxClientRequest(requests);
-        System.out.println("Attempting Send ");
-        RequestFuture rd= sendRequestAnycast(txClientRequest, new RequestCallback() {
+//                sendRequest(new GetRequest("name3"), new RequestCallback() {
+//                    @Override
+//                    public void handleResponse(Request response) {
+//                        System.out.println(response.toString());
+//                    }
+//                });
 
-            @Override
-            public void handleResponse(Request response) {
-                if(response instanceof TxClientResult){
-                    try {
-
-                        TxClientResult t = (TxClientResult)response;
-                        System.out.println(t.getActivesPrevious().toString());
-                        System.out.println("Transaction status "+((TxClientResult) response).success);
-//                        testGetRequest(10);
-                        System.out.println("Transaction test complete");
-                    }catch(Exception e){
-                        throw new RuntimeException("Transaction failed");
-                    }
-                }
+            }catch(Exception e){
+                e.printStackTrace();
+                System.out.println("Some Exception");
             }
-         });
+
+        }
+
+
     }
 
     /**
