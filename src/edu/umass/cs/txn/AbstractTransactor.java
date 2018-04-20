@@ -189,4 +189,14 @@ public  abstract class AbstractTransactor<NodeIDType> extends
 		return this.coordinator.execute(request, noReplyToClient, requestCallback);
 	}
 
+	public boolean restore(String name, String state) {
+		return this.coordinator.restore(name,state);
+	}
+
+	@Override
+	public String checkpoint(String name) {
+		return this.coordinator.checkpoint(name);
+	}
+
+
 }

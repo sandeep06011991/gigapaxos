@@ -76,22 +76,20 @@ public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> impleme
 		}
 
 		void operate(OperateRequest.Operation operation,int obj){
-			try{
-				/*Make this a long blocking operation when testing for abort*/
-				System.out.println("Begin sleep for 5 sec");
-				TimeUnit.SECONDS.sleep(20);
-//				System.out.println("End sleep for 5 sec");
-			}catch (Exception e){
-				e.printStackTrace();
-			}
+//			try{
+//				/*Make this a long blocking operation when testing for abort*/
+//				System.out.println("Begin sleep for 5 sec");
+//				TimeUnit.SECONDS.sleep(20);
+////				System.out.println("End sleep for 5 sec");
+//			}catch (Exception e){
+//				e.printStackTrace();
+//			}
 			switch (operation){
 				case add:
 					state = state + obj;
-					System.out.println("After executing add "+name+"="+state);
 					break;
 				case multiply:
 					state = state *obj;
-					System.out.println("After executing add "+name+"="+state);
 					break;
 			}
 
@@ -134,7 +132,6 @@ public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> impleme
 			return true;
 		}
 		if(request instanceof OperateRequest){
-		System.out.println("Operate option"+request.toString());
 			OperateRequest operateRequest = (OperateRequest)request;
 			String name=operateRequest.getServiceName();
 			AppData ap=appData.get(name);
@@ -242,6 +239,8 @@ public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> impleme
 			number = Integer.parseInt(state);
 		}catch(NumberFormatException nfe){
 			number = 0;
+			if(!state.equals("{}"))
+				throw new RuntimeException("This should never happen" +state);
 		}
 
 		// if no previous state, this is a creation epoch.

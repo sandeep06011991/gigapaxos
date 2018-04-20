@@ -13,8 +13,8 @@ import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
 import edu.umass.cs.txn.txpackets.TXPacket;
-import edu.umass.cs.txn.txpackets.TXTakeover;
 import edu.umass.cs.txn.txpackets.TxClientResult;
+import edu.umass.cs.txn.txpackets.UnlockRequest;
 import org.json.JSONException;
 
 import java.io.IOException;
@@ -47,15 +47,11 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
             return;
         }
         try {
-            if(message instanceof TXTakeover){
-                System.out.println(getMyID()+ "is attempting a takeover");
-                ((TXTakeover) message).setNewLeader((String)getMyID());
-            }
             if(message instanceof TxClientResult){
                 TxClientResult txClientResult = (TxClientResult) message;
                 try {
                     if(!this.abstractReplicaCoordinator.getMessenger().getListeningSocketAddress().equals(txClientResult.getServerAddr())){
-                        System.out.println("Indirect response:send to entry server");
+//                        System.out.println("Indirect response:send to entry server");
                         ((JSONMessenger) (this.abstractReplicaCoordinator.getMessenger())).sendClient(txClientResult.getServerAddr(),
                                 txClientResult);
 
@@ -70,7 +66,6 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
 
                 return;
             }
-
             this.gpClient.sendRequest((Request) message, new RequestCallback() {
                 @Override
 

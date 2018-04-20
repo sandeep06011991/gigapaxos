@@ -71,7 +71,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
                             @Override
                             public void handleResponse(Request response) {
                                 if(response instanceof TxClientResult){
-                                    System.out.println(("Transaction status"+((TxClientResult) response).success));
+//                                    System.out.println(("Transaction status"+((TxClientResult) response).success));
                                 }
                                 System.out.print("Delivered");
                             }

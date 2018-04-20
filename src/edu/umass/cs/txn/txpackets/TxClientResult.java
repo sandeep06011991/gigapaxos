@@ -6,6 +6,7 @@ import edu.umass.cs.gigapaxos.interfaces.RequestIdentifier;
 import edu.umass.cs.nio.JSONPacket;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
 import edu.umass.cs.txn.Transaction;
+import edu.umass.cs.txn.exceptions.ResponseCode;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -16,7 +17,6 @@ import java.util.Set;
 
 public class TxClientResult extends JSONPacket implements Request,RequestIdentifier,ClientRequest {
 
-    public boolean success;
 
     long requestId;
 
@@ -25,12 +25,17 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
 
     Set<String> activesPrevious;
 
-    public TxClientResult(Transaction transaction,boolean success){
+    ResponseCode rpe;
+
+    public TxClientResult(Transaction transaction,ResponseCode rpe,Set<String> activesPrevious){
         super(TXPacket.PacketType.TX_CLIENT_RESPONSE);
         this.requestId = transaction.requestId;
-        this.success = success;
         this.serverAddr = transaction.entryServer;
         this.clientAddr = transaction.clientAddr;
+        this.rpe = rpe;
+        this.activesPrevious = activesPrevious;
+        assert !((rpe == ResponseCode.LOCK_FAILURE ) && activesPrevious== null);
+
     }
 
 
@@ -39,7 +44,6 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
 
     public TxClientResult(JSONObject json) throws JSONException {
         super(json);
-        success = json.getBoolean("success");
         requestId = json.getLong("reqID");
         clientAddr = getSocketAddrFromString(json.getString("clientAddr"));
         serverAddr = getSocketAddrFromString(json.getString("serverAddr"));
@@ -50,19 +54,18 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
                 activesPrevious.add(tt.getString(t));
             }
         }
-//        assert !success && activesPrevious.size()>0;
+        rpe = ResponseCode.getResponseCodeFromInt(json.getInt("RPE"));
+        assert !((rpe == ResponseCode.LOCK_FAILURE ) && activesPrevious== null);
     }
 
     @Override
     public JSONObject toJSONObject() throws JSONException {
         JSONObject jsonObject=super.toJSONObject();
         jsonObject.put("reqID",requestId);
-        jsonObject.put("success",success);
         jsonObject.put("clientAddr",clientAddr.toString());
         jsonObject.put("serverAddr",serverAddr.toString());
         jsonObject.put("Actives",activesPrevious);
-
-//        assert !success && activesPrevious.size()>0;
+        jsonObject.put("RPE",rpe.getInt());
         return jsonObject;
     }
 
@@ -111,4 +114,8 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
     }
 
     public Set<String> getActivesPrevious(){return  activesPrevious;}
+
+    public ResponseCode getRpe() {
+        return rpe;
+    }
 }

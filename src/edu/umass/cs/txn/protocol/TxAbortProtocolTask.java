@@ -6,6 +6,7 @@ import edu.umass.cs.protocoltask.ProtocolEvent;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
 import edu.umass.cs.txn.Transaction;
+import edu.umass.cs.txn.exceptions.ResponseCode;
 import edu.umass.cs.txn.txpackets.*;
 
 import java.util.ArrayList;
@@ -18,58 +19,49 @@ public class TxAbortProtocolTask<NodeIDType>
 //    FIXME: There should be a retry mechanism
     TreeSet<String> unlockList;
 
+    ResponseCode rpe;
 
-    public TxAbortProtocolTask(Transaction transaction, ProtocolExecutor protocolExecutor,Set<String> leaderActives,Set<String> previousQuorum) {
-        super(transaction, protocolExecutor, leaderActives, previousQuorum);
+    Set<String> previousLeaderActives;
+
+    boolean respondToClient = true;
+
+    public TxAbortProtocolTask(Transaction transaction, ProtocolExecutor protocolExecutor, Set<String> previousQuorum, ResponseCode rpe) {
+        super(transaction, protocolExecutor);
         unlockList = transaction.getLockList();
+        assert unlockList.size() >0;
+        assert !((rpe == ResponseCode.LOCK_FAILURE)&&(previousQuorum == null));
+        this.rpe = rpe;
+        this.previousLeaderActives = previousQuorum;
     }
 
     @Override
-    public TransactionProtocolTask onStateChange(TxStateRequest request) {
+    public void onStateChange(TxStateRequest request) {
         if(TxState.COMPLETE == request.getState()){
-            System.out.println("Abort sequence completed!!!!!!!!!!!!!!!!!!");
-            return null;
+            this.cancel();
         }
-        if(request.getQuorum().size()!=0 && previousLeaderActives ==null)previousLeaderActives = request.getQuorum();
-        if(request.getState() == TxState.ABORTED){
-            return new TxAbortProtocolTask(transaction,protocolExecutor,leaderActives,previousLeaderActives);
-        }
-
-        System.out.println("Ignoring this state:" + request.getState() + " change as decision is already made");
-        return new TxAbortProtocolTask(transaction,protocolExecutor,leaderActives,previousLeaderActives);
-//        throw new RuntimeException("To change state from Abort to"+ request.getState()+"is a safety violation");
-        /*  Only a primary can initite state change and if if there is a another primary, a state change request
-             * would be processed before this is handled */
     }
 
-    @Override
-    public TransactionProtocolTask onTakeOver(TXTakeover request, boolean isPrimary) {
-        if(isPrimary){
-            return null;
-        }
-        /*A primary would not issue a take over */
-        return new TxSecondaryProtocolTask(transaction, TxState.ABORTED,protocolExecutor,leaderActives,previousLeaderActives);
-    }
 
     @Override
-    public GenericMessagingTask<NodeIDType, ?>[] handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType, TXPacket.PacketType, String>[] ptasks) {
+    public GenericMessagingTask<NodeIDType, ?>[] handleEvent(ProtocolEvent<TXPacket.PacketType, String> event,
+                                                             ProtocolTask<NodeIDType, TXPacket.PacketType, String>[] ptasks) {
         if((event instanceof TXResult) && (((TXResult) event).opPacketType == TXPacket.PacketType.UNLOCK_REQUEST)){
             TXResult txResult=(TXResult)event;
             String opId= txResult.getOpId();
             if(unlockList.remove(opId)){
-                System.out.println("Unlocked "+opId);
+//                System.out.println("Unlocked "+opId);
             }
+            if(unlockList.isEmpty()){
+//                FixME: Redundant make this a function
+                ArrayList<Request> re= new ArrayList<>();
+                TxStateRequest request=new TxStateRequest(transaction.getTXID(),TxState.COMPLETE,transaction.getLeader(),
+                        ResponseCode.COMPLETE,null);
+                re.add(request);
+                return getMessageTask(re);
+            }
+
         }
-        if(unlockList.isEmpty()){
-            TxClientResult result=new TxClientResult(transaction,false);
-            result.setActivesPrevious(previousLeaderActives);
-            System.out.println("Complete and Cancelled");
-            ArrayList<Request> re= new ArrayList<>();
-            TxStateRequest request=new TxStateRequest(transaction.getTXID(),TxState.COMPLETE,transaction.getLeader());
-            re.add(request);
-            re.add(result);
-            return getMessageTask(re);
-        }
+
         return null;
     }
 
@@ -80,8 +72,17 @@ public class TxAbortProtocolTask<NodeIDType>
             UnlockRequest unlockRequest = new UnlockRequest(t,transaction.getTXID(),false,transaction.getLeader());
             requests.add(unlockRequest);
         }
-        System.out.println("Abort Sequence initiated" + retry);
-
+        if(respondToClient){
+        TxClientResult result=new TxClientResult(transaction,rpe,previousLeaderActives);
+        requests.add(result);
+        respondToClient = false;
+        }
+        if(unlockList.isEmpty()){
+            TxStateRequest request=new TxStateRequest(transaction.getTXID(),TxState.COMPLETE,transaction.getLeader(),
+                    ResponseCode.COMPLETE,null);
+            requests.add(request);
+        }
+//      TEST: retry mechanism, return null
         return getMessageTask(requests);
     }
 

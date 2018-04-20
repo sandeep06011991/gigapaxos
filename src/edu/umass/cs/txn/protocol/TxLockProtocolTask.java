@@ -6,10 +6,12 @@ import edu.umass.cs.protocoltask.ProtocolEvent;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
 import edu.umass.cs.txn.Transaction;
+import edu.umass.cs.txn.exceptions.ResponseCode;
 import edu.umass.cs.txn.txpackets.*;
 import org.omg.SendingContext.RunTime;
 
 import java.util.*;
+import java.util.logging.Logger;
 
 public class TxLockProtocolTask<NodeIDType> extends
         TransactionProtocolTask<NodeIDType>{
@@ -17,43 +19,34 @@ public class TxLockProtocolTask<NodeIDType> extends
 //    The lock protocol has 3 options to transition into
 //    1) AbortProtocol: If the locks could not be acquired
 //    2) Execute Protocol: If the locks could be acquired
-//    3) onTakeOver: If a secondary timesout
 
 
     TreeSet<String> awaitingLock;
 
+    Set<String> leaderActives;
+
     public TxLockProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor,Set<String> leaderActives)
     {
-        super(transaction,protocolExecutor,leaderActives,null);
+        super(transaction,protocolExecutor);
+        this.leaderActives = leaderActives;
         awaitingLock = transaction.getLockList();
     }
 
     @Override
-    public TransactionProtocolTask onStateChange(TxStateRequest request) {
+    public void  onStateChange(TxStateRequest request) {
+        this.cancel();
         if(request.getState() == TxState.ABORTED){
 //            This would have been started by the same primary
 //            if the primary had changed, there would be a take over message in between
-            if(previousLeaderActives==null)previousLeaderActives = request.getQuorum();
-            return new TxAbortProtocolTask(transaction,protocolExecutor,leaderActives,previousLeaderActives);
+            protocolExecutor.spawn(new TxAbortProtocolTask(transaction,protocolExecutor,request.getPreviousActives(),request.getRpe()));
+            return;
         }
         if(request.getState() == TxState.COMMITTED){
 //            This happens when the server is recovering
-            return new TxCommitProtocolTask(transaction,protocolExecutor,leaderActives,null);
+            protocolExecutor.spawn(new TxCommitProtocolTask(transaction,protocolExecutor));
+            return;
         }
-
         throw new RuntimeException("Safety Violation"+request.toString());
-    }
-
-    @Override
-    public TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary) {
-        if(isPrimary){
-/*      FIXME: Why is this possible
-            Check request retry mechanism with arun
-            Assumption: requests with same reqID are ignored.
- *      If a node recieves an old take over message */
-            return  null;
-        }
-        return new TxSecondaryProtocolTask(transaction,TxState.INIT,getProtocolExecutor(),leaderActives,previousLeaderActives);
     }
 
 
@@ -61,25 +54,25 @@ public class TxLockProtocolTask<NodeIDType> extends
     public GenericMessagingTask<NodeIDType, ?>[]
     handleEvent(ProtocolEvent<TXPacket.PacketType, String> event, ProtocolTask<NodeIDType,TXPacket.PacketType, String>[] ptasks) {
         if((event instanceof TXResult)
-                &&(((TXResult) event).opPacketType==TXPacket.PacketType.LOCK_REQUEST)){
-            TXResult txResult=(TXResult)event;
-            String opId=txResult.getOpId();
+                &&(((TXResult) event).opPacketType==TXPacket.PacketType.LOCK_REQUEST)) {
+            TXResult txResult = (TXResult) event;
+            String opId = txResult.getOpId();
+//          A lock already acquired or unrelated lock
+            if (!awaitingLock.remove(opId)) return null;
             //FIXME: Is there a better way to map lock opId to Lock requests
             if(txResult.isFailed()){
-            TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(),TxState.ABORTED, this.transaction.getLeader());
-            assert txResult.getPrevLeaderQuorumIfFailed().size() >0;
-            stateRequest.setFailedActives(txResult.getPrevLeaderQuorumIfFailed());
-                System.out.println("Locks"  +   txResult.getOpId()+  " must be busy");
+                TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(), TxState.ABORTED,
+                        transaction.getLeader() ,ResponseCode.LOCK_FAILURE,txResult.getPrevLeaderQuorumIfFailed());
+                assert stateRequest.getPreviousActives() != null;
                 return getMessageTask(stateRequest);
             }
-            if(awaitingLock.remove(opId)){
-                System.out.println("Lock "+opId +" "+txResult.isFailed());
-            }
+
         if(awaitingLock.isEmpty()){
-                System.out.println("All locks recieved");
+//                System.out.println("All locks recieved");
+//            Not required to build a retry mechanism as this is internal
                 this.cancel();
-                ptasks[0]=new TxExecuteProtocolTask(this.transaction,getProtocolExecutor(),leaderActives,previousLeaderActives);
-            }
+                ptasks[0]=new TxExecuteProtocolTask(this.transaction,getProtocolExecutor());
+                }
         }
         return null;
     }
@@ -93,7 +86,6 @@ public class TxLockProtocolTask<NodeIDType> extends
             requests.add(lockRequest);
 
             }
-        System.out.println("Begin Locking");
         return getMessageTask(requests);
 
     }
@@ -110,6 +102,5 @@ public class TxLockProtocolTask<NodeIDType> extends
         public String getKey() {
             return transaction.getTXID();
         }
-
 
 }

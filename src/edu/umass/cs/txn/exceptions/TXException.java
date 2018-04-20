@@ -4,7 +4,7 @@ package edu.umass.cs.txn.exceptions;
  * @author arun
  *
  */
-public class TXException extends Exception {
+public abstract class TXException extends Exception {
 
 	/**
 	 * 

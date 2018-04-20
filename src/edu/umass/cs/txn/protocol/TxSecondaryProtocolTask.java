@@ -8,6 +8,7 @@ import edu.umass.cs.protocoltask.SchedulableProtocolTask;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.txn.DistTransactor;
 import edu.umass.cs.txn.Transaction;
+import edu.umass.cs.txn.exceptions.ResponseCode;
 import edu.umass.cs.txn.txpackets.*;
 
 import java.util.HashSet;
@@ -21,16 +22,19 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
 
     long period;
 
-    TXTakeover request;
+    Set<String> leaderActives;
 
+    Set<String> prevLeaderActives;
+
+    ResponseCode rpe;
     public TxSecondaryProtocolTask(Transaction transaction, TxState state
-            , ProtocolExecutor protocolExecutor,Set<String> leaderActives ,Set<String> prevLeaderQuorum){
-        super(transaction,protocolExecutor,leaderActives,prevLeaderQuorum);
+            , ProtocolExecutor protocolExecutor,Set<String> leaderActives ){
+        super(transaction,protocolExecutor);
         this.state=state;
-        this.period =  (120+new Random().nextInt(120))*1000;
+        this.period =  (3+new Random().nextInt(5))*1000;
+        this.leaderActives = leaderActives;
         //Secondaries timeout after 2 min
-        request=new TXTakeover(TXPacket.PacketType.TX_TAKEOVER,transaction.getTXID(),transaction.getLeader());
-        System.out.println("Secondary inititated with timeout "+period);
+//        System.out.println("Secondary inititated with timeout "+period);
     }
 
     public TxState getState() {
@@ -42,26 +46,17 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
     }
 
     @Override
-    public TransactionProtocolTask onStateChange(TxStateRequest request) {
+    public void onStateChange(TxStateRequest request) {
         TxState newState=request.getState();
         if(newState == TxState.COMPLETE){
-            System.out.println("Everything done ");
-            return null;
+            this.cancel();
         }
-        if((state != TxState.INIT ) && (newState !=state)){
-           System.out.println("Changing state to"+newState );
-        }
-        System.out.println("New Secondary with task " + newState);
-        if(request.getQuorum().size()!=0 && previousLeaderActives==null) previousLeaderActives = request.getQuorum();
-        return new TxSecondaryProtocolTask(transaction,newState,getProtocolExecutor(),leaderActives, previousLeaderActives);
-    }
-
-    @Override
-    public TransactionProtocolTask onTakeOver(TXTakeover request,boolean isPrimary) {
-        if(isPrimary){
-            return new TxLockProtocolTask<>(transaction,getProtocolExecutor(),leaderActives);
-        }else{
-            return new TxSecondaryProtocolTask(transaction,state,getProtocolExecutor(),leaderActives,previousLeaderActives);
+        if((state == TxState.INIT )){
+            state = newState;
+            if(newState == TxState.ABORTED){
+                prevLeaderActives = request.getPreviousActives();
+                rpe = request.getRpe();
+            }
         }
     }
 
@@ -93,7 +88,20 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
 
     @Override
     public GenericMessagingTask<NodeIDType, ?>[] restart() {
-        return getMessageTask(request);
+        ProtocolTask pt =null;
+        switch(state){
+            case INIT:  pt = new TxLockProtocolTask(transaction,protocolExecutor,leaderActives);
+                        break;
+            case COMMITTED: pt = new TxCommitProtocolTask(transaction,protocolExecutor);
+                            break;
+            case ABORTED:   pt = new TxAbortProtocolTask(transaction,protocolExecutor,prevLeaderActives,rpe);
+                            break;
+        }
+        this.cancel();
+        assert  pt!=null;
+        System.out.println("Transaction ID:"+transaction.getTXID()+"    secondary timeout"+state);
+        protocolExecutor.spawn(pt);
+        return null;
     }
 
 
