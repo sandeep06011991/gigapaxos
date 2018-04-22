@@ -31,7 +31,7 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
             , ProtocolExecutor protocolExecutor,Set<String> leaderActives ){
         super(transaction,protocolExecutor);
         this.state=state;
-        this.period =  (3+new Random().nextInt(5))*1000;
+        this.period =  (10+new Random().nextInt(5))*1000;
         this.leaderActives = leaderActives;
         //Secondaries timeout after 2 min
 //        System.out.println("Secondary inititated with timeout "+period);

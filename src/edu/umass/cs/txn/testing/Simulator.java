@@ -38,17 +38,17 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
 
 
     * */
-    static int load =10;
+    static int load =30;
 
-    static int noBursts = 2;
+    static int noBursts = 5;
 //  sets of transactions sent
 
-    static int maxGroups = 10;
+    static int maxGroups = 100;
 //max groups created
     static int recieved = 0;
 //to wait till groups are complete
 
-    static int txSize = 4;
+    static int txSize = 3;
 //  TxSize is the size of the load
 
     int failure =0;
@@ -61,6 +61,7 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
 
     static boolean created = false;
 
+    static HashMap<ResponseCode,Integer> results = new HashMap<>();
 
    static  String cmdAppend1 = "./bin/gpServer.sh";
    static String cmdAppend2= "-DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties ";
@@ -104,9 +105,14 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
     TxClientRequest getRandomlyCreatedTxRequest(){
         Random random = new Random();
         ArrayList<ClientRequest> clientRequests=new ArrayList<>();
+        Set<Integer> prev = new HashSet<>();
+        int t;
         for(int i=0;i<txSize;i++){
-            int t = random.nextInt(maxGroups)+1;
-           String name = "name"+t;
+            t = random.nextInt(maxGroups)+1;
+            while(prev.contains(t)){
+                t = random.nextInt(maxGroups)+1;
+            }
+            String name = "name"+t;
             clientRequests.add(new OperateRequest(name,10, OperateRequest.Operation.add));
         }
         TxClientRequest txClientRequest = new TxClientRequest(clientRequests);
@@ -124,6 +130,14 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
 //            if(i<=isAlive.size()/2)failure++;
         }
     }
+    synchronized static void updateRPE(ResponseCode rpe){
+
+        if(!results.containsKey(rpe)){
+            results.put(rpe,1);
+        }else{
+            results.put(rpe,results.get(rpe).intValue()+1);
+        }
+    }
 
     public float startload(int load){
         createSomething();
@@ -133,15 +147,21 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
         for(int i=0;i<=load*noBursts;i++){
             rateLimiter.record();
             TxClientRequest txClientRequest = getRandomlyCreatedTxRequest();
+//            System.out.println("Request ID"+txClientRequest.getRequestID());
             try {
-                sendRequestAnycast(txClientRequest, new RequestCallback() {
+                sendRequestAnycast(txClientRequest,new TimeoutRequestCallback() {
+                    @Override
+                    public long getTimeout() {
+                        return 1000000;
+                    }
+
                     @Override
                     public void handleResponse(Request response) {
                         if (response instanceof TxClientResult) {
                             TxClientResult t = (TxClientResult) response;
 //                          if(t.success)checkQuorumStatus(t.getActivesPrevious());
-                            System.out.println(t.getRpe());
-                            if(t.getRpe()!= ResponseCode.COMMITTED)checkQuorumStatus(t.getActivesPrevious());
+                            updateRPE(t.getRpe());
+//                            if(t.getRpe()!= ResponseCode.COMMITTED)checkQuorumStatus(t.getActivesPrevious());
                         }
                     }
                 });
@@ -152,7 +172,7 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
         }
         System.out.print("Begin Wait");
         try{
-            TimeUnit.SECONDS.sleep(30);
+            TimeUnit.SECONDS.sleep(60);
         }catch(Exception ex){
 
         }
@@ -322,7 +342,10 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
 //
 //            TimeUnit.SECONDS.sleep(120);
 //            float failurePercentage =new Simulator(isAlive).startload(10);
-            writer.write("ettf:failure:"+failurePercentage);
+            System.out.println(results.size()+" : Collected results");
+            for(ResponseCode r:results.keySet()){
+                System.out.println(r+"   :   "+results.get(r));
+            }
 
 //        }
 //        writer.close();

@@ -81,8 +81,7 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
                 }
             });
         }catch(IOException ex){
-            ex.printStackTrace();
-            System.out.println("Exception");
+            System.out.println("Exception"+ex.getMessage());
         }
     }
     @Override

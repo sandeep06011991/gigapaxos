@@ -419,19 +419,16 @@ function get_address_port {
 }
 
 function check_java {
-
-
 #### Install all relevant software
-
-remote = "$SSH $username@$address"
+remote=" $SSH $username@$address "
 java_version=`$remote which java`
 ##
 if [ -z $java_version ]; then
     echo $remote "sudo apt-get install openjdk-8-jre"
-    `$remote 'sudo apt-get -y install openjdk-8-jre' >&2`
+    `$remote 'sudo apt-get update  && sudo apt-get -y install openjdk-8-jre' >&2`
     echo "`$remote which java` is installed"
 else
-    echo "$java_version is installed"
+    echo "`$remote which java` is installed"
 fi
 #
 }
@@ -467,6 +464,7 @@ function start_server {
     $RSYNC --rsync-path="$RSYNC_PATH && rsync" \
       $jar_files $username@$address:$INSTALL_PATH/jars/
     rsync_symlink $address
+    check_java
 
     # then start remote server
     print 2 "$SSH $username@$address \"cd $INSTALL_PATH; nohup \
@@ -475,7 +473,7 @@ function start_server {
       edu.umass.cs.reconfiguration.ReconfigurableNode \
       $APP_ARGS $server \""
 
-    $SSH $username@$address "cd $INSTALL_PATH; nohup \
+    $SSH $username@$address "cd $INSTALL_PATH;mkdir -p tmp; nohup \
       $JAVA $DEBUG_ARGS $REMOTE_JVMARGS \
       -cp \`ls jars/*|awk '{printf \$0\":\"}'\` \
       edu.umass.cs.reconfiguration.ReconfigurableNode \

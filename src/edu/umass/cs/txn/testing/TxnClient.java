@@ -170,7 +170,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
                     }
                 });
-//                TimeUnit.SECONDS.sleep(1);
+                TimeUnit.SECONDS.sleep(1);
 //
 //                ResultRequest rr= (ResultRequest) sendRequest(new GetRequest("name3"));
 //                System.out.println("Result "+i+":"+rr.getResult());

@@ -411,10 +411,10 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			if(protocolTask!=null){
 //				logic to not change state from COMMIT/ABORT is inside each protocol task
 				protocolTask.onStateChange((TxStateRequest) request);
+				leaderStateHashMap.get(request.getServiceName()).
+						updateTransaction(((TxStateRequest) request).getTXID(),((TxStateRequest) request).getState());
 			}
 //			Similar logic to not change state from INIT or COMMIT is inside leaderState
-			leaderStateHashMap.get(request.getServiceName()).
-					updateTransaction(((TxStateRequest) request).getTXID(),((TxStateRequest) request).getState());
 			return true;
 		}
 		if((request instanceof ClientRequest)){
