@@ -55,6 +55,11 @@ public enum ResponseCode {
 
 	COMPLETE(19),
 
+	TARGET(20),
+
+	OVERLOAD(21),
+
+	RECOVERING(22),
 	;
 
 	final int code;

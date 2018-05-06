@@ -34,7 +34,9 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
         this.clientAddr = transaction.clientAddr;
         this.rpe = rpe;
         this.activesPrevious = activesPrevious;
-        assert !((rpe == ResponseCode.LOCK_FAILURE ) && activesPrevious== null);
+        if((rpe == ResponseCode.LOCK_FAILURE ) && activesPrevious== null){
+            this.rpe = ResponseCode.RECOVERING;
+        };
 
     }
 
@@ -44,7 +46,7 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
 
     public TxClientResult(JSONObject json) throws JSONException {
         super(json);
-        requestId = json.getLong("reqID");
+        requestId = json.getLong("REQUESTID");
         clientAddr = getSocketAddrFromString(json.getString("clientAddr"));
         serverAddr = getSocketAddrFromString(json.getString("serverAddr"));
         if(json.has("Actives")){
@@ -55,13 +57,15 @@ public class TxClientResult extends JSONPacket implements Request,RequestIdentif
             }
         }
         rpe = ResponseCode.getResponseCodeFromInt(json.getInt("RPE"));
-        assert !((rpe == ResponseCode.LOCK_FAILURE ) && activesPrevious== null);
+         if((rpe == ResponseCode.LOCK_FAILURE ) && activesPrevious== null){
+             rpe = ResponseCode.RECOVERING;
+         };
     }
 
     @Override
     public JSONObject toJSONObject() throws JSONException {
         JSONObject jsonObject=super.toJSONObject();
-        jsonObject.put("reqID",requestId);
+        jsonObject.put("REQUESTID",requestId);
         jsonObject.put("clientAddr",clientAddr.toString());
         jsonObject.put("serverAddr",serverAddr.toString());
         jsonObject.put("Actives",activesPrevious);

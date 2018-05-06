@@ -70,5 +70,9 @@ public class LeaderState {
         }
 
     }
+
+    public boolean isEmpty(){
+        return ongoingTxnHashMap.isEmpty();
+    }
 }
 

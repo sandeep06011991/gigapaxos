@@ -86,7 +86,7 @@ public abstract class ReconfigurableAppClientAsync<V> implements
 	 * The default timeout for {@link ClientRequest} as well as
 	 * {@link ClientReconfigurationPacket} requests.
 	 */
-	public static final long DEFAULT_GC_TIMEOUT = 800000;
+	public static final long DEFAULT_GC_TIMEOUT = 8000;
 	private static final long DEFAULT_GC_LONG_TIMEOUT = 5 * 60 * 1000;
 	// can by design sometimes take a long time
 	private static final long SRP_GC_TIMEOUT = 60 * 60 * 000; // an hour
@@ -254,9 +254,9 @@ public abstract class ReconfigurableAppClientAsync<V> implements
 	private static final Logger log = Logger
 			.getLogger(ReconfigurableAppClientAsync.class.getName()); // Reconfigurator.getLogger();
 
-	private static int maxOutstandingAppRequests = 409600;
+	private static int maxOutstandingAppRequests = 40960;
 
-	private static int maxOutstandingCRPRequests = 409600;
+	private static int maxOutstandingCRPRequests = 40960;
 
 	class ActivesInfo {
 		final Set<InetSocketAddress> actives;
@@ -545,9 +545,9 @@ public abstract class ReconfigurableAppClientAsync<V> implements
 					updateBestReplica((RequestAndCallback) callback);
 				} else if (response instanceof ClientRequest) {
 					ReconfigurableAppClientAsync.log.log(Level.WARNING,
-							"{0} received an app response with no matching callback{1},{2}",
+							"{0} received an app response with no matching callback{1}",
 							new Object[] { ReconfigurableAppClientAsync.this,
-									response.getSummary() ,response.toString()});
+									response.getSummary() });
 				}
 				// ActiveReplicaError has to be dealt with separately
 				else if ((response instanceof ActiveReplicaError)

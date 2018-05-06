@@ -24,8 +24,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import edu.umass.cs.reconfiguration.ReconfigurationConfig;
+import edu.umass.cs.txn.DistTransactor;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -51,12 +54,15 @@ import org.omg.SendingContext.RunTime;
  *         because 1*2+3 != 1*3+2
  */
 public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> implements
-		Replicable, Reconfigurable, ClientMessenger, AppRequestParserBytes {
+		Replicable, ClientMessenger, AppRequestParserBytes {
 
 	private static final int DEFAULT_INIT_STATE = 0;
 	// total number of reconfigurations across all records
 	private int numReconfigurationsSinceRecovery = -1;
 	private boolean verbose =true;
+
+	private static final Logger log = Logger
+			.getLogger(DistTransactor.class.getName());
 
 	private class AppData {
 		final String name;
@@ -119,6 +125,7 @@ public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> impleme
 
 	@Override
 	public boolean execute(Request request, boolean doNotReplyToClient) {
+		log.log(Level.INFO,"Participant: EXECUTE "+request.getServiceName().hashCode());
 
 		if (request.toString().equals(Request.NO_OP))
 			return true;
@@ -135,6 +142,11 @@ public class CalculatorTX extends AbstractReconfigurablePaxosApp<String> impleme
 			OperateRequest operateRequest = (OperateRequest)request;
 			String name=operateRequest.getServiceName();
 			AppData ap=appData.get(name);
+			if(ap==null){
+				System.out.println("High load error");
+				ap = new AppData(name,0);
+				appData.put(name,ap);
+			}
 			ap.operate(operateRequest.operation,operateRequest.object);
 			return true;
 		}

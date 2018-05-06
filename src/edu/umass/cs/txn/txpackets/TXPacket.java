@@ -100,7 +100,7 @@ public abstract class TXPacket extends JSONPacket implements ReplicableRequest,
 
 	final String leader;
 
-	private static enum Keys {
+    public  static enum Keys {
 		TXID, LOCKID, INITIATOR,REQUESTID,LEADER,
 	}
 

@@ -35,15 +35,17 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
     2. Do the same with some contention and check if quorum details are being recieved
     3. Start Failining machines and do the same
 
-
-
     * */
-    static int load =30;
+    static int load =20;
 
-    static int noBursts = 5;
+//    static int noBursts = 10;
+    static int noBursts = 10 * 180;
+//    1 day is 10 sec
 //  sets of transactions sent
+//  1 day is 30 sec and running for 180 days
 
-    static int maxGroups = 100;
+    static int maxGroups = 210;
+            //210;
 //max groups created
     static int recieved = 0;
 //to wait till groups are complete
@@ -51,11 +53,9 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
     static int txSize = 3;
 //  TxSize is the size of the load
 
-    int failure =0;
-// Total failure status
-
-    static int stabilizeTime = 60;
+    static int stabilizeTime = 30;
 //    Wait 2 minute after starting everythin
+//    Atleast this much time between failures
 
     static TxnClient client;
 
@@ -64,11 +64,11 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
     static HashMap<ResponseCode,Integer> results = new HashMap<>();
 
    static  String cmdAppend1 = "./bin/gpServer.sh";
-   static String cmdAppend2= "-DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties ";
+   static String cmdAppend2= "-DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties";
 
     HashMap<String,Boolean> isAlive;
     static  void createSomething(){
-        if(!created) {
+            recieved = 0;
             try {
                 client = new TxnClient();
                 Set<InetSocketAddress> quorum = new HashSet<>();
@@ -97,9 +97,8 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
                 e.printStackTrace();
                 throw new RuntimeException("Unable to create");
             }
-        }
-        created = true;
     }
+
 
 
     TxClientRequest getRandomlyCreatedTxRequest(){
@@ -114,70 +113,115 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
             }
             String name = "name"+t;
             clientRequests.add(new OperateRequest(name,10, OperateRequest.Operation.add));
+            prev.add(t);
         }
+
         TxClientRequest txClientRequest = new TxClientRequest(clientRequests);
         return txClientRequest;
     }
 
-    void checkQuorumStatus(Set<String> actives){
-        synchronized (isAlive){
-            failure++;
-
-//            int i=0;
-//            for(String active:actives){
-//                if(isAlive.get(active).booleanValue())i++;
-//            }
-//            if(i<=isAlive.size()/2)failure++;
+    ResponseCode checkQuorumStatus(Set<String> actives,ResponseCode rpe) {
+        if (rpe == ResponseCode.LOCK_FAILURE) {
+            synchronized (isAlive) {
+                int i = 0;
+                for (String active : actives) {
+                    if (isAlive.get(active)) i++;
+                }
+//                try {
+////                    writer.write("Quorum Alive" + i + "Quorum Total" + actives.size()+"\n");
+//                }catch (IOException ioe){
+////                    System.out.println("ioe exception");
+//                }
+                if (i <= actives.size() / 2) {
+                    return ResponseCode.TARGET;
+                }
+            }
         }
+        return rpe;
     }
-    synchronized static void updateRPE(ResponseCode rpe){
 
-        if(!results.containsKey(rpe)){
+    synchronized static void updateRPE(ResponseCode rpe){
+           if(!results.containsKey(rpe)){
             results.put(rpe,1);
         }else{
-            results.put(rpe,results.get(rpe).intValue()+1);
+            results.put(rpe,results.get(rpe)+1);
         }
     }
 
-    public float startload(int load){
+    static Set<Long> requestIds = new HashSet<>();
+
+    public float startload(int load,int totalRequests){
         createSomething();
         RateLimiter rateLimiter = new RateLimiter(load);
         System.out.println("Start load");
         Timer timer = new Timer();
-        for(int i=0;i<=load*noBursts;i++){
+        requestIds = new HashSet<>();
+        for(int i=0;i<=totalRequests;i++){
             rateLimiter.record();
             TxClientRequest txClientRequest = getRandomlyCreatedTxRequest();
+
 //            System.out.println("Request ID"+txClientRequest.getRequestID());
             try {
+                synchronized (requestIds){
+                    requestIds.add(txClientRequest.getRequestID());
+                }
+//                writer.write("Send rqID:"+txClientRequest.getRequestID()+"\n");
                 sendRequestAnycast(txClientRequest,new TimeoutRequestCallback() {
                     @Override
                     public long getTimeout() {
-                        return 1000000;
+                        return 50*60*2000;
                     }
 
                     @Override
                     public void handleResponse(Request response) {
+
                         if (response instanceof TxClientResult) {
                             TxClientResult t = (TxClientResult) response;
-//                          if(t.success)checkQuorumStatus(t.getActivesPrevious());
-                            updateRPE(t.getRpe());
+//                            try {
+////                                writer.write("Recieved rqID" + t.getRequestID() + "\n");
+//                            }catch (IOException e){
+//
+//                            }
+                            synchronized (requestIds){
+                                requestIds.remove(t.getRequestID());
+                            }
+//                            if(.success)checkQuorumStatus(t.getActivesPrevious());
+                            updateRPE(checkQuorumStatus(t.getActivesPrevious(),t.getRpe()));
 //                            if(t.getRpe()!= ResponseCode.COMMITTED)checkQuorumStatus(t.getActivesPrevious());
                         }
                     }
                 });
+                if(i%10000==0) {
+                    synchronized (requestIds) {
+                        writer.write("requests sent"+i+": Outstanding "+requestIds.size());
+                        writer.newLine();
+                    }
+                }
             }catch (Exception ex){
-                System.out.println("Recieved an exception");
-            }
+                try {
+                    writer.write(ex.getMessage());
+                }catch(Exception e){
+
+                }
+                }
+
 
         }
         System.out.print("Begin Wait");
         try{
             TimeUnit.SECONDS.sleep(60);
+            synchronized (requestIds){
+                writer.write("Did not recieve\n");
+                Object[] a=requestIds.toArray();
+                for(int i=0;i<20;i++){
+                    writer.write(a[i]+"\n");
+                }
+            }
         }catch(Exception ex){
 
         }
-        System.out.println("The end");
-        return (failure/(load*noBursts)*100);
+
+         return 0;
     }
 
     /**
@@ -205,8 +249,6 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
             // do nothing by designSys
             e.printStackTrace();
         }
-
-
         return null;
     }
 
@@ -234,16 +276,7 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
         return Math.round(Math.log(1- rand.nextDouble())*(exp)*-1);
     }
 
-
-    static class SimulateFailure extends Thread{
-
-        final String activeID;
-
-        final int ettf;
-
-        HashMap<String,Boolean> isAlive;
-
-        void runCommand(String[] cmd){
+    synchronized static void runCommand(String[] cmd){
         try {
             Process p = Runtime.getRuntime().exec(cmd);
             BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -254,9 +287,19 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
             input.close();
         } catch(IOException ex){
             ex.printStackTrace();
-            System.out.println(activeID + "Could not execute");
+            System.out.println(cmd + "Could not execute");
         }
-        }
+    }
+
+    static class SimulateFailure extends Thread{
+
+        final String activeID;
+
+        final int ettf;
+
+        HashMap<String,Boolean> isAlive;
+
+
 
         String[] getStartCommand(){
 
@@ -272,32 +315,26 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
             this.activeID = activeID;
             this.ettf = ettf;
             this.isAlive = isAlive;
-//            runCommand(new String[]{"ls","bin/gpServer.sh"});
-            runCommand(getStopCommand());
-
         }
 
         public void run() {
-            try {
-                synchronized (isAlive){
-                    isAlive.put(activeID,new Boolean(true));
-                }
-               runCommand(getStartCommand());
-               Thread.sleep(stabilizeTime*1000);
-//                while(true) {
-//                    long fail = getRandom(ettf);
-//                    Thread.sleep(fail*1000);
-//                    synchronized (isAlive){
-//                        isAlive.put(activeID,new Boolean(false));
-//                    }
-//                    runCommand(getStopCommand());
-//                    System.out.println("System " + activeID + " Killed");
-//                    Thread.sleep(10000);// MTTR
-//                    runCommand(getStartCommand());
-//                    synchronized (isAlive){
-//                        isAlive.put(activeID,new Boolean(true));
-//                    }
-//                }
+            try{
+            while(!isInterrupted()) {
+                    long fail = getRandom(ettf);
+                    Thread.sleep(fail*1000);
+                    synchronized (isAlive){
+                        isAlive.put(activeID,new Boolean(false));
+                    }
+                    runCommand(getStopCommand());
+                    System.out.println("System " + activeID + " Killed");
+                    Thread.sleep(30000);// MTTR
+                    runCommand(getStartCommand());
+                    Thread.sleep(stabilizeTime * 1000);
+                    synchronized (isAlive) {
+                        isAlive.put(activeID, new Boolean(true));
+                    }
+
+            }
             }catch(InterruptedException ex){
                 System.out.println("Interrupted");
             }
@@ -322,33 +359,73 @@ public class Simulator extends ReconfigurableAppClientAsync<Request> {
         }
 
     }
+    static BufferedWriter writer;
 
     public static void main(String args[]) throws  IOException,InterruptedException{
-        createSomething();
-        BufferedWriter writer = new BufferedWriter(new FileWriter("results"));
-        ArrayList<SimulateFailure> threads= new ArrayList<>();
-        int ettfs[] = {100};
+//      Start everything after, starting all replicas
         HashMap<String,Boolean> isAlive = new HashMap<>();
-        float failurePercentage =new Simulator(isAlive).startload(load);
-        System.out.println("Failure %"+failurePercentage);
-//        for(int ettf:ettfs){
-//            while(!threads.isEmpty()){
-//                SimulateFailure sm = threads.get(0);
-//                sm.interrupt();
-//            }
-//            for(String key:actives.keySet()){
-//                new SimulateFailure(key,ettf,isAlive).start();
-//            }
-//
-//            TimeUnit.SECONDS.sleep(120);
-//            float failurePercentage =new Simulator(isAlive).startload(10);
-            System.out.println(results.size()+" : Collected results");
-            for(ResponseCode r:results.keySet()){
-                System.out.println(r+"   :   "+results.get(r));
-            }
+        HashMap<String,SimulateFailure> threads = new HashMap<>();
+//        createSomething();
+        writer = new BufferedWriter(new FileWriter("results"));
+        writer.write("This is a test\n");
+        writer.flush();
+//        int ettfs[] = {15 days, 30 days, 3 months, 6 months, 1 year}
+// ;
+        int ettfs[] = {0,450,900,2700,5400,10800};
+//        int ettfs[] = {0};
+//        if etffs = 0 no failure
+        //        int[] ettfs={150};
+        /*  TIME COMPRESSION
+        * If a day is represented by 30 seconds,
+        * MTTR -> 1 day = 30 sec
+        * e_MTTF -> 365*30
+        * Total run time is 6 months
+        * or req/s * 180 * 30 total requests
+        * Actual time per experiment : 90 min
+        *
+        *
+        * */
+        for(int ettf:ettfs){
+            //kill every machine
+        recieved = 0;
 
-//        }
-//        writer.close();
+        runCommand(new String[]{cmdAppend1 ,cmdAppend2 ,"forceclear","all"});
+		TimeUnit.SECONDS.sleep(10);
+                        
+		runCommand(new String[]{cmdAppend1,cmdAppend2,"start","all"});
+		TimeUnit.SECONDS.sleep(120);
+            
+            results = new HashMap<>();
+            isAlive = new HashMap<>();
+            createSomething();
+            // Start every machine: Stabilize
+            for(String k:actives.keySet()){
+                if(ettf!=0){
+                 SimulateFailure s=new SimulateFailure(k,ettf,isAlive);s.start();
+                threads.put(k,s);
+                    }
+                isAlive.put(k,true);
+            }
+//  Total requests is no. of days * (equivalent secodns in a day)
+            float failurePercentage =new Simulator(isAlive).startload(load,load*noBursts);
+            writer.write("ETTF:"+ettf+" Failure:"+failurePercentage+"\n");
+            writer.write("Total Load :"+load*noBursts+"\n");
+            for(ResponseCode rpc:results.keySet()){
+                writer.write("STATS for"+rpc+"is "+results.get(rpc)+"\n");
+            }
+            writer.flush();
+
+            for(String th:threads.keySet()){
+                SimulateFailure f=threads.get(th);
+                if(f.isAlive()){
+                    f.interrupt();
+                    f.join();
+                }
+            }
+        }
+        writer.write("The end");
+
+        writer.close();
     }
 
 

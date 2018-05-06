@@ -42,6 +42,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
         if(!created){
             try {
                 client = new TxnClient();
+
                 client.sendRequest(new CreateServiceName("Service_name_txn","0"));
                 client.sendRequest(new CreateServiceName("name3", "0"));
                 client.sendRequest(new CreateServiceName("name4","1"));
@@ -56,7 +57,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
     }
 
     void testGetRequest(int finalValue) throws IOException{
-        sendRequest(new GetRequest("name0"), new InetSocketAddress("127.0.0.1", 2100), new RequestCallback() {
+        sendRequest(new GetRequest("name3"), new RequestCallback() {
             @Override
             public void handleResponse(Request response) {
                 ResultRequest rr= (ResultRequest)response;
@@ -149,7 +150,7 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
 
     void testBasicCommit() throws IOException{
         createSomething();
-        for(int i=0;i<20;i++) {
+        for(int i=0;i<2;i++) {
             try {
                 System.out.println("Attempt Request "+i);
                 ArrayList<ClientRequest> requests = new ArrayList<>();
@@ -162,11 +163,11 @@ public class TxnClient extends ReconfigurableAppClientAsync<Request> {
                 sendRequestAnycast(txClientRequest, new RequestCallback() {
                     @Override
                     public void handleResponse(Request response) {
-                        TxClientResult t = (TxClientResult)response;
+                        TxClientResult t = (TxClientResult) response;
                         long recvTime = new Date().getTime();
                         long startTime = init.get(new Long(t.getRequestID()));
                         long timeTaken = (recvTime - startTime);
-                        System.out.println("Req Status:"+t.getRpe()+" with " + timeTaken);
+                        System.out.println("Req Status:" + t.getRpe() + " with " + timeTaken);
 
                     }
                 });

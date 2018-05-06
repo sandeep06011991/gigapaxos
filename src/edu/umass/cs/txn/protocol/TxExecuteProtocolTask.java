@@ -17,6 +17,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class TxExecuteProtocolTask<NodeIDType>
         extends TransactionProtocolTask<NodeIDType> {
@@ -26,6 +28,9 @@ public class TxExecuteProtocolTask<NodeIDType>
     ArrayList<Long> toExecuteRequests = new ArrayList<>();
     HashMap<Long,ClientRequest> map = new HashMap<>();
 
+    private static final Logger log = Logger
+            .getLogger(DistTransactor.class.getName());
+
     public TxExecuteProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor){
 
         super(transaction,protocolExecutor);
@@ -34,6 +39,7 @@ public class TxExecuteProtocolTask<NodeIDType>
             toExecuteRequests.add(((ClientRequest)r).getRequestID());
             map.put(((ClientRequest)r).getRequestID(),(ClientRequest) r);
         }
+        log.log(Level.INFO,"Primary: Execute "+transaction.getTXID());
     }
 
     @Override

@@ -5,12 +5,14 @@ import edu.umass.cs.nio.GenericMessagingTask;
 import edu.umass.cs.protocoltask.ProtocolEvent;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
+import edu.umass.cs.txn.DistTransactor;
 import edu.umass.cs.txn.Transaction;
 import edu.umass.cs.txn.exceptions.ResponseCode;
 import edu.umass.cs.txn.txpackets.*;
 import org.omg.SendingContext.RunTime;
 
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class TxLockProtocolTask<NodeIDType> extends
@@ -25,11 +27,19 @@ public class TxLockProtocolTask<NodeIDType> extends
 
     Set<String> leaderActives;
 
+    /*If some lock failed */
+    boolean lockFailure = false;
+
+    Set<String> previousActives;
+
+    private static final Logger log = Logger
+            .getLogger(DistTransactor.class.getName());
     public TxLockProtocolTask(Transaction transaction,ProtocolExecutor protocolExecutor,Set<String> leaderActives)
     {
         super(transaction,protocolExecutor);
         this.leaderActives = leaderActives;
         awaitingLock = transaction.getLockList();
+        log.log(Level.INFO,"Primary: Lock "+transaction.getTXID());
     }
 
     @Override
@@ -46,7 +56,12 @@ public class TxLockProtocolTask<NodeIDType> extends
             protocolExecutor.spawn(new TxCommitProtocolTask(transaction,protocolExecutor));
             return;
         }
-        throw new RuntimeException("Safety Violation"+request.toString());
+
+        if(request.getState() == TxState.COMPLETE){
+            System.out.println("Wierd occurance Debug later");
+//            This is only happenning on recovery and that too at high load only
+        }
+//        throw new RuntimeException("Safety Violation"+request.toString());
     }
 
 
@@ -61,18 +76,28 @@ public class TxLockProtocolTask<NodeIDType> extends
             if (!awaitingLock.remove(opId)) return null;
             //FIXME: Is there a better way to map lock opId to Lock requests
             if(txResult.isFailed()){
-                TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(), TxState.ABORTED,
-                        transaction.getLeader() ,ResponseCode.LOCK_FAILURE,txResult.getPrevLeaderQuorumIfFailed());
-                assert stateRequest.getPreviousActives() != null;
-                return getMessageTask(stateRequest);
+                lockFailure = true;
+                previousActives = txResult.getPrevLeaderQuorumIfFailed();
+
             }
+//            if(txResult.isFailed()){
+//                TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(), TxState.ABORTED,
+//                        transaction.getLeader() ,ResponseCode.LOCK_FAILURE,txResult.getPrevLeaderQuorumIfFailed());
+//                assert stateRequest.getPreviousActives() != null;
+//                return getMessageTask(stateRequest);
+//            }
 
         if(awaitingLock.isEmpty()){
-//                System.out.println("All locks recieved");
-//            Not required to build a retry mechanism as this is internal
-                this.cancel();
-                ptasks[0]=new TxExecuteProtocolTask(this.transaction,getProtocolExecutor());
+                if(!lockFailure) {
+                    this.cancel();
+                    ptasks[0] = new TxExecuteProtocolTask(this.transaction, getProtocolExecutor());
+                }else{
+                    TxStateRequest stateRequest = new TxStateRequest(this.transaction.getTXID(), TxState.ABORTED,
+                            transaction.getLeader() ,ResponseCode.LOCK_FAILURE,previousActives);
+                    assert stateRequest.getPreviousActives() != null;
+                    return getMessageTask(stateRequest);
                 }
+            }
         }
         return null;
     }

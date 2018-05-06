@@ -1,3 +1,18 @@
+Important scripts
+
+Participant:
+java -ea -cp ./lib/*:./synoptic/bin/:./daikonizer/bin/ synoptic.main.SynopticMain -r "^(?<DATETIME>[^\\[]+) \\[INFO\\] Primary: (?<TYPE>\\w+) (?<ID>[-]?\\d+)$" -m "\k<ID>" sample -o out -d /usr/local/bin/dot -i
+
+
+java -ea -cp ./lib/*:./synoptic/bin/:./daikonizer/bin/ synoptic.main.SynopticMain -r "^(?<DTIME>[^\\[]+) \\[INFO\\] Recieved type: (?<TYPE>\\w+) (?<ID>\\d+)$" -m "\k<ID>" sample -o out -d /usr/local/bin/dot -i
+java -ea -cp ./lib/*:./synoptic/bin/:./daikonizer/bin/ synoptic.main.SynopticMain -r "^(?<DTIME>[^\\[]+) \\[INFO\\] Recieved type: (?<TYPE>\\w+) (?<ID>\\d+)$" -m "\k<ID>" sample -o out -d /usr/local/bin/dot -i
+
+Recieved a request of 
+2018-04-25 02:24:21 [INFO] Recieved type: TXSTATEREQUEST 401422436322848362
+2018-04-25 02:24:21 [INFO] Recieved type: TXCLIENT 16956522634433429
+
+2018-04-25 02:24:21 [INFO] Recieved type:UNLOCK-4228829965501012031
+
 Reasons why I did something ??
 
 When a server is restarted the PRC recovers completely and then hands off the the App

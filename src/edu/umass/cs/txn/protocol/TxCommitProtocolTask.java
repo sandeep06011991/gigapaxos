@@ -7,11 +7,14 @@ import edu.umass.cs.nio.JSONMessenger;
 import edu.umass.cs.protocoltask.ProtocolEvent;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
+import edu.umass.cs.txn.DistTransactor;
 import edu.umass.cs.txn.Transaction;
 import edu.umass.cs.txn.exceptions.ResponseCode;
 import edu.umass.cs.txn.txpackets.*;
 
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public  class TxCommitProtocolTask<NodeIDType> extends
         TransactionProtocolTask<NodeIDType>{
@@ -20,9 +23,13 @@ public  class TxCommitProtocolTask<NodeIDType> extends
 
     boolean respondToClient = true;
 
+    private static final Logger log = Logger
+            .getLogger(DistTransactor.class.getName());
+
     public TxCommitProtocolTask(Transaction t, ProtocolExecutor protocolExecutor)
     {
         super(t,protocolExecutor);
+        log.log(Level.INFO,"Primary: Commit "+t.getTXID());
     }
 
 
@@ -101,4 +108,11 @@ public  class TxCommitProtocolTask<NodeIDType> extends
 //            FIXME: To build an exponential back off
             return start();
         }
+
+    @Override
+    public long getPeriod() {
+//        FIXME: Write a test that Test this getPeriod
+//        FIXME: Write a random wait Period generator
+        return  20000;
+    }
 }

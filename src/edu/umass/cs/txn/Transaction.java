@@ -67,7 +67,8 @@ public class Transaction extends JSONObject {
 	final String leader;
 
 	public Transaction(InetSocketAddress entryServer ,ArrayList<ClientRequest> requests,String nodeId,InetSocketAddress clientAddr,long requestId,String leader) {
-		this.txnId = getNewTxid(entryServer);
+		this.txnId = Long.toString(requestId);
+//				getNewTxid(entryServer);
 		this.entryServer = entryServer;
 //		FIXME: Should this really be a request
 		this.requests = requests;

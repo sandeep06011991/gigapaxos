@@ -12,6 +12,7 @@ import edu.umass.cs.nio.interfaces.NodeConfig;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.reconfiguration.AbstractReplicaCoordinator;
 import edu.umass.cs.reconfiguration.ReconfigurableAppClientAsync;
+import edu.umass.cs.txn.DistTransactor;
 import edu.umass.cs.txn.txpackets.TXPacket;
 import edu.umass.cs.txn.txpackets.TxClientResult;
 import edu.umass.cs.txn.txpackets.UnlockRequest;
@@ -19,6 +20,8 @@ import org.json.JSONException;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Message> {
 
@@ -28,7 +31,8 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
 
     boolean isRecovering = true;
 
-
+    private static final Logger log = Logger
+            .getLogger(DistTransactor.class.getName());
 
     public void setProtocolExecutor(ProtocolExecutor pe){
         this.pe=pe;
@@ -43,13 +47,16 @@ public class TxMessenger<NodeIDType,Message> implements Messenger<NodeIDType,Mes
     }
     public void sendObject(Object message) {
         if(isRecovering){
-            System.out.println("Sorry is recovering ");
+//            System.out.println("Sorry is recovering ");
             return;
         }
         try {
             if(message instanceof TxClientResult){
                 TxClientResult txClientResult = (TxClientResult) message;
                 try {
+
+                    log.log(Level.INFO,"Recieved type: SENDTOCLIENT "+txClientResult.getRequestID());
+//                    log.log(Level.INFO,"Message sent to client:"+txClientResult.getRequestID());
                     if(!this.abstractReplicaCoordinator.getMessenger().getListeningSocketAddress().equals(txClientResult.getServerAddr())){
 //                        System.out.println("Indirect response:send to entry server");
                         ((JSONMessenger) (this.abstractReplicaCoordinator.getMessenger())).sendClient(txClientResult.getServerAddr(),

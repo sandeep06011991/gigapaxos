@@ -14,6 +14,8 @@ import edu.umass.cs.txn.txpackets.*;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask<NodeIDType> implements
         SchedulableProtocolTask<NodeIDType, TXPacket.PacketType, String>  {
@@ -27,12 +29,17 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
     Set<String> prevLeaderActives;
 
     ResponseCode rpe;
+
+    private static final Logger log = Logger
+            .getLogger(DistTransactor.class.getName());
+
     public TxSecondaryProtocolTask(Transaction transaction, TxState state
             , ProtocolExecutor protocolExecutor,Set<String> leaderActives ){
         super(transaction,protocolExecutor);
         this.state=state;
         this.period =  (10+new Random().nextInt(5))*1000;
         this.leaderActives = leaderActives;
+        log.log(Level.INFO,"Secondary: "+this.state+" "+transaction.getTXID());
         //Secondaries timeout after 2 min
 //        System.out.println("Secondary inititated with timeout "+period);
     }
@@ -49,9 +56,11 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
     public void onStateChange(TxStateRequest request) {
         TxState newState=request.getState();
         if(newState == TxState.COMPLETE){
+            log.log(Level.INFO,"Secondary: "+newState+" "+transaction.getTXID());
             this.cancel();
         }
         if((state == TxState.INIT )){
+            log.log(Level.INFO,"Secondary: "+newState+" "+transaction.getTXID());
             state = newState;
             if(newState == TxState.ABORTED){
                 prevLeaderActives = request.getPreviousActives();
@@ -112,5 +121,7 @@ public class TxSecondaryProtocolTask<NodeIDType> extends TransactionProtocolTask
         return  period;
     }
 
-
+    public void setRpe(ResponseCode rpe){
+        this.rpe = rpe;
+    }
 }

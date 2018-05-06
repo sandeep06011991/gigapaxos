@@ -26,8 +26,10 @@ public class LockRequest extends TXPacket {
 	public LockRequest(String serviceName ,String txId,String leader,Set<String> leaderActives){
 		super(PacketType.LOCK_REQUEST,txId,leader);
 		this.serviceName = serviceName;
-		this.leaderActives.addAll(leaderActives);
-	}
+		if(leaderActives!=null) {
+			this.leaderActives.addAll(leaderActives);
+			}
+		}
 	/**
 	 * @param json
 	 * @throws JSONException

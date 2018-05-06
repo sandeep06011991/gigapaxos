@@ -6,6 +6,9 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 
 import edu.umass.cs.gigapaxos.interfaces.*;
 import edu.umass.cs.nio.JSONMessenger;
@@ -37,6 +40,7 @@ import org.omg.SendingContext.RunTime;
  *         which is normally the primary designate in the transaction group. If
  *         the primary crashes, a secondary might use this class for the same
  *         purpose.
+ *         Dist Transactor is a wrapper class around AbstractReplicaCoordinator
  * @param <NodeIDType>
  */
 public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
@@ -50,10 +54,13 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	
 	final ProtocolExecutor<NodeIDType,TXPacket.PacketType,String> protocolExecutor;
 
+//	A Storage structure for locks
 	private final TXLocker txLocker;
 
 	private TxMessenger txMessenger;
 
+	private static final Logger log = Logger
+			.getLogger(DistTransactor.class.getName());
 
 	HashMap<String,LeaderState> leaderStateHashMap = new HashMap<>();
 	/**
@@ -240,8 +247,8 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		try{
 			JSONObject jsonObject=new  JSONObject(str);
 			TXPacket.PacketType packetId=TXPacket.PacketType.intToType.get(jsonObject.getInt("type"));
-			if(packetId !=null){
-			switch(packetId) {
+			if(packetId !=null) {
+				switch(packetId) {
 				case TX_INIT:
 					return new TXInitRequest(jsonObject,this.getCoordinator());
 				case LOCK_REQUEST:
@@ -311,6 +318,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		if(request instanceof TxClientRequest) {
 			String leader = "Service_name_txn";
 			TxClientRequest txClientRequest=(TxClientRequest)request;
+			log.log(Level.INFO,"Recieved txClient Request"+txClientRequest.getRequestID()+"Recieved");
 			leader = txClientRequest.getRequests().get(0).getServiceName();
 			Transaction transaction = new Transaction(txClientRequest.recvrAddr,
 					((TxClientRequest) request).getRequests(), (String) getMyID(),
@@ -334,15 +342,43 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 //		FIXME: and inside the secondary transaction protocol
 		if(request instanceof TXInitRequest){
 			TXInitRequest trx=(TXInitRequest)request;
+//			## Limit Size of leader
+			if((leaderStateHashMap.get(trx.transaction.leader)!=null)&&(leaderStateHashMap.get(trx.transaction.leader).ongoingTxnHashMap.size()>8)){
+				if(!trx.transaction.nodeId.equals(this.getMyID()))return true;
+				txMessenger.sendObject(new TxClientResult(trx.transaction,ResponseCode.OVERLOAD,null));
+				return true;
+			}
+//			These are wierd fixes when participant groups behave as leaders
 			Set<String> leaderActives = (Set<String>)this.getCoordinator().getReplicaGroup(trx.transaction.getLeader());
-				if(trx.transaction.nodeId.equals(this.getMyID())){
-					this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(trx.transaction,protocolExecutor,
-							leaderActives));
+			boolean flag = true;
+			if(trx.transaction.nodeId.equals(this.getMyID())){
+					if(!txLocker.isLocked(trx.transaction.leader)){
+//						FixME: There is a very important reason for locking leader, WRITE IT UP LATER
+//						FixME: VERY IMPORTANT !!!!!!!!!!!!!!!!!!
+						/* When the state of the participant which also acts as a leader
+						when you checkpoint it its state which is altered with the ongoing Txn
+						detailes is captured in the JSON . This is nonsensical
+						 Quick solution was to lock it and checkpoint before adding additional details
+						 of ongoing Transaction*/
+						txLocker.lock(trx.transaction.getLeader(),trx.getTXID(),leaderActives);
+						this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(trx.transaction,protocolExecutor,
+								leaderActives));
+					}else{
+//						If leader which is a participant is locked, transaction would anyway be aborted
+						leaderActives = txLocker.getStateMap(trx.transaction.leader).getLeaderQuorum();
+						txMessenger.sendObject(new TxClientResult(trx.transaction,ResponseCode.LOCK_FAILURE,leaderActives));
+						return true;
+						}
 				}else{
-					this.protocolExecutor.spawnIfNotRunning(
-							new TxSecondaryProtocolTask<>
-									(trx.transaction,TxState.INIT,protocolExecutor,
-											leaderActives));
+					if(!txLocker.isLocked(trx.transaction.leader)){
+						txLocker.lock(trx.transaction.getLeader(),trx.getTXID(),leaderActives);
+						this.protocolExecutor.spawnIfNotRunning(
+								new TxSecondaryProtocolTask<>
+										(trx.transaction,TxState.INIT,protocolExecutor,
+												leaderActives));
+					}else{
+						return true;
+					}
 				}
 			String leader_name=trx.transaction.getLeader();
 			LeaderState leaderState;
@@ -363,7 +399,12 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			result.setRequestId(lockRequest.getRequestID());
 			lockRequest.response=result;
 			if(!success && txLocker.isLocked(lockRequest.getServiceName())){
-				result.setActivesOfPreviousLeader(txLocker.getStateMap(lockRequest.getServiceName()).leaderQuorum);
+				result.setActivesOfPreviousLeader(txLocker.getStateMap(lockRequest.getServiceName()).getLeaderQuorum());
+			}
+			if(success){
+				log.log(Level.INFO,"Recieved type: LOCKOK "+((LockRequest) request).getTXID());
+			}else{
+				log.log(Level.INFO,"Recieved type: LOCKFAIL "+((LockRequest) request).getTXID());
 			}
 			return true;
 		}
@@ -374,6 +415,11 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 				if (txLocker.isLockedByTxn(unlockRequest.getServiceName(), unlockRequest.getLockID())) {
 					if (!unlockRequest.isCommited()) {
 						restore(unlockRequest.getServiceName(), txLocker.getStateMap(unlockRequest.getServiceName()).state);
+					}
+					if(unlockRequest.isCommited()){
+						log.log(Level.INFO,"Participant: COMMIT "+ unlockRequest.getServiceName().hashCode());
+					}else{
+						log.log(Level.INFO,"Participant: ABORT "+unlockRequest.getServiceName().hashCode());
 					}
 					txLocker.unlock(unlockRequest.getServiceName(), unlockRequest.txid);
 				} else {
@@ -396,6 +442,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			TxOpRequest txOpRequest=(TxOpRequest) request;
 			boolean success=txLocker.isLockedByTxn(txOpRequest.getServiceName(),txOpRequest.getTXID());
 			if(success){
+				log.log(Level.INFO,"Recieved type: TXOP "+((TxOpRequest) request).getTXID());
 				boolean handled=txLocker.allowRequest(txOpRequest.request.getRequestID(),txOpRequest.txid,txOpRequest.getServiceName());
 				if(!handled) this.execute(txOpRequest.request,true,null);
 			}
@@ -411,9 +458,14 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			if(protocolTask!=null){
 //				logic to not change state from COMMIT/ABORT is inside each protocol task
 				protocolTask.onStateChange((TxStateRequest) request);
-				leaderStateHashMap.get(request.getServiceName()).
-						updateTransaction(((TxStateRequest) request).getTXID(),((TxStateRequest) request).getState());
+				LeaderState state= leaderStateHashMap.get(request.getServiceName());
+				state.updateTransaction(((TxStateRequest) request).getTXID(),((TxStateRequest) request).getState());
+				if(state.isEmpty()){
+					leaderStateHashMap.remove(request.getServiceName());
+				}
 			}
+			log.log(Level.INFO,"Recieved type: "+((TxStateRequest) request).getState()+" "+((TxStateRequest) request).getTXID());
+
 //			Similar logic to not change state from INIT or COMMIT is inside leaderState
 			return true;
 		}
@@ -437,8 +489,13 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 	}
 
 
-	public String preCheckpoint(String name) {
-		if(!txLocker.isLocked(name)&&!leaderStateHashMap.containsKey(name)){return null;}
+	public synchronized String preCheckpoint(String name) {
+//		Used by both locker and checkpointing methods
+		/*Invariant every leader is definetely locked
+		Converselly if a group is unlocked , it is not a leader
+		FixME: UNCLEAR EXPLANATION: WRITE IT MORE CAREFULLY
+		* */
+		if(!txLocker.isLocked(name)){return null;}
 		JSONObject jsonObject= new JSONObject();
 		try {
 			if (txLocker.isLocked(name)) {
@@ -455,7 +512,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 		}
 	}
 
-	public boolean preRestore(String name, String state) {
+	public synchronized boolean preRestore(String name, String state) {
 		try {
 			JSONObject jsonObject = new JSONObject(state);
 			if(!(jsonObject.has("txLocker") ||(jsonObject.has("leader")))){
@@ -467,7 +524,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 			}catch(NumberFormatException a){
 				ex.printStackTrace();
 			}
-			System.out.println("Entering  inside for "+state);
+//			System.out.println("Entering  inside for "+state);
 			return false;
 		}
 
@@ -478,7 +535,7 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 				TxnState txnState=new TxnState(jsonObject.getJSONObject("txLocker"));
 				this.getCoordinator().restore(name,txnState.state);
 				txLocker.updateStateMap(name,txnState);
-				for(String req_string:txnState.requests){
+				for(String req_string:txnState.getRequests()){
 					Request request=this.getCoordinator().getRequest(req_string);
 					this.getCoordinator().execute(request,true);
 				}
@@ -492,17 +549,16 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 				* */
 				if(leaderStateHashMap.containsKey(name))return true;
 				LeaderState leaderState = new LeaderState(jsonObject.getJSONObject("leader"),this.getCoordinator());
+				leaderStateHashMap.put(name,leaderState);
 				for(OngoingTxn ongoingTxn:leaderState.ongoingTxnHashMap.values()){
 					Transaction transaction = ongoingTxn.transaction;
-					Set<String > leaderActives = (Set<String>) this.getCoordinator().getReplicaGroup(transaction.getLeader());
+					Set<String > leaderActives =(Set<String>) this.getCoordinator().getReplicaGroup(transaction.getLeader());
 					if(protocolExecutor.isRunning(transaction.getTXID())){continue;}
 					switch(ongoingTxn.txState){
 						case INIT:	if(transaction.nodeId.equals(getMyID())){
-									System.out.println("Initiating Primary Transaction	"+getMyID());
 										this.protocolExecutor.spawnIfNotRunning(new TxLockProtocolTask<NodeIDType>(transaction,protocolExecutor,
 												leaderActives));
 									}else{
-										System.out.println("Initiating Secondary Transaction");
 										this.protocolExecutor.spawnIfNotRunning(
 												new TxSecondaryProtocolTask<>
 														(transaction,TxState.INIT,protocolExecutor,leaderActives));
@@ -516,7 +572,6 @@ public class DistTransactor<NodeIDType> extends AbstractTransactor<NodeIDType>
 						case COMPLETE: throw new RuntimeException("If it was complete why would it be recorded");
 					}
 				}
-				leaderStateHashMap.put(name,leaderState);
 
 			}
 			return true;

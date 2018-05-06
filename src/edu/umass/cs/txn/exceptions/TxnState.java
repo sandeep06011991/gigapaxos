@@ -24,9 +24,9 @@ public class TxnState {
 //  Also used for rollbacks
     public String state;
 
-    public ArrayList<String> requests = new ArrayList<>();
-    public HashSet<Long> requestId = new HashSet<>();
-    public Set<String> leaderQuorum = new HashSet<>();
+    ArrayList<String> requests = new ArrayList<>();
+    HashSet<Long> requestId = new HashSet<>();
+    Set<String> leaderQuorum = new HashSet<>();
 
     public  TxnState(String txId,String state,Set<String> leaderQuorum){
         this.txId = txId    ;
@@ -80,5 +80,17 @@ public class TxnState {
     @Override
     public String toString() {
         return toJSONObject().toString();
+    }
+
+    public HashSet<Long> getRequestId() {
+        return requestId;
+    }
+
+    public ArrayList<String> getRequests() {
+        return requests;
+    }
+
+    public Set<String> getLeaderQuorum() {
+        return leaderQuorum;
     }
 }

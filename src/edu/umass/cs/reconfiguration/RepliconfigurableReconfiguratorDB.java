@@ -78,6 +78,7 @@ public class RepliconfigurableReconfiguratorDB<NodeIDType> extends
 			Messenger<NodeIDType, JSONObject> niot, boolean startCleanSlate) {
 		// setting paxosManager out-of-order limit to 1
 		super(app, myID, consistentNodeConfig, niot, 1);
+		this.initRecovery();
 		assert (niot != null);
 		this.app = app;
 		this.consistentNodeConfig = consistentNodeConfig;

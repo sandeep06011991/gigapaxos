@@ -1,11 +1,11 @@
 
 server:
+	echo yes|./bin/gpServer.sh  -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties  clear all
 	./bin/gpServer.sh  -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties  stop all
 	ant
 	rm -f tmp/*
 	rm -rf paxos_logs/*
 	rm -rf reconfiguration_DB/*
-	ant
 	./bin/gpServer.sh -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties start all
 
 
@@ -23,6 +23,7 @@ client:
 	./bin/gpClient.sh -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties edu.umass.cs.txn.testing.TxnClient
 
 sim:
+	ant compile
 	rm -rf results
 	./bin/gpClient.sh -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties edu.umass.cs.txn.testing.Simulator
 
@@ -42,3 +43,6 @@ kill_all:
 
 restart:
 	./bin/gpServer.sh -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties start all
+
+clear:
+	./bin/gpServer.sh -DgigapaxosConfig=src/edu/umass/cs/txn/testing/gigapaxos.properties clear all

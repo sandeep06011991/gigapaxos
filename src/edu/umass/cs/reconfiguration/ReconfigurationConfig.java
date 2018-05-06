@@ -288,7 +288,7 @@ public class ReconfigurationConfig {
 		 * that this parameter is irrelevant after name creation as the number
 		 * of replicas thereafter is controlled by the reconfiguration policy.
 		 */
-		REPLICATE_ALL(true),
+		REPLICATE_ALL(false),
 		/**
 		 * 
 		 */

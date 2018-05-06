@@ -5,6 +5,7 @@ import edu.umass.cs.nio.GenericMessagingTask;
 import edu.umass.cs.protocoltask.ProtocolEvent;
 import edu.umass.cs.protocoltask.ProtocolExecutor;
 import edu.umass.cs.protocoltask.ProtocolTask;
+import edu.umass.cs.txn.DistTransactor;
 import edu.umass.cs.txn.Transaction;
 import edu.umass.cs.txn.exceptions.ResponseCode;
 import edu.umass.cs.txn.txpackets.*;
@@ -13,6 +14,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class TxAbortProtocolTask<NodeIDType>
             extends TransactionProtocolTask<NodeIDType> {
@@ -25,13 +28,21 @@ public class TxAbortProtocolTask<NodeIDType>
 
     boolean respondToClient = true;
 
+    private static final Logger log = Logger
+            .getLogger(DistTransactor.class.getName());
+
+
     public TxAbortProtocolTask(Transaction transaction, ProtocolExecutor protocolExecutor, Set<String> previousQuorum, ResponseCode rpe) {
         super(transaction, protocolExecutor);
         unlockList = transaction.getLockList();
         assert unlockList.size() >0;
-        assert !((rpe == ResponseCode.LOCK_FAILURE)&&(previousQuorum == null));
+        if(((rpe == ResponseCode.LOCK_FAILURE)&&(previousQuorum == null))){
+/*  When recovering from checkpoint, we are not presisting which quorum failed */
+            rpe = ResponseCode.RECOVERING;
+        };
         this.rpe = rpe;
         this.previousLeaderActives = previousQuorum;
+        log.log(Level.INFO,"Primary: Abort "+transaction.getTXID());
     }
 
     @Override
@@ -104,4 +115,10 @@ public class TxAbortProtocolTask<NodeIDType>
         return start();
     }
 
+    @Override
+    public long getPeriod() {
+//        FIXME: Write a test that Test this getPeriod
+//        FIXME: Write a random wait Period generator
+        return  20000;
+    }
 }

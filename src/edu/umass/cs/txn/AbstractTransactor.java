@@ -86,8 +86,8 @@ public  abstract class AbstractTransactor<NodeIDType> extends
 
 //	/* FIXME: Why would we need call backs ?? */
 	/* Isnt rigging the  pre-executed function not enough */
-	private GCConcurrentHashMap<Request, ExecutedCallback> callbacks = new GCConcurrentHashMap<Request, ExecutedCallback>(
-			DEFAULT_TX_TIMEOUT);
+//	private GCConcurrentHashMap<Request, ExecutedCallback> callbacks = new GCConcurrentHashMap<Request, ExecutedCallback>(
+//			DEFAULT_TX_TIMEOUT);
 	/* ********* Start of coordinator-related methods *************** */
 	private Set<IntegerPacketType> cachedRequestTypes = null;
 
@@ -109,14 +109,14 @@ public  abstract class AbstractTransactor<NodeIDType> extends
 	@Override
 	public boolean coordinateRequest(Request request, ExecutedCallback callback)
 			throws IOException, RequestParseException {
-		if (!ENABLE_TRANSACTIONS || this.callbacks.size() < MAX_QUEUED_REQUESTS
-				&& this.callbacks.putIfAbsent(request, callback) == null)
+//		if (!ENABLE_TRANSACTIONS || this.callbacks.size() < MAX_QUEUED_REQUESTS
+//				&& this.callbacks.putIfAbsent(request, callback) == null)
 			return this.coordinator.coordinateRequest(request, callback);
 		// else
-		ReconfigurationConfig.getLogger().log(Level.WARNING,
-				"{0} dropping request {1} because queue size limit reached",
-				new Object[] { this, request.getSummary() });
-		return false;
+//		ReconfigurationConfig.getLogger().log(Level.WARNING,
+//				"{0} dropping request {1} because queue size limit reached",
+//				new Object[] { this, request.getSummary() });
+//		return false;
 	}
 
 
